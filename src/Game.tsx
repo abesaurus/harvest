@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import {
-  useGame, disconnect, plant, harvestPlot, harvestAll, claim, convertToBoost,
+  useGame, disconnect, harvestAll, claim, convertToBoost,
   buySeed, poolShare, onToast,
 } from "./store";
 import {
   MAX_LEVEL, MIN_POOL_LEVEL, MAX_PLOTS, POOL_BPS, GROW_MS,
   xpForNext, unlockedPlots, CROPS, CROP_ORDER, RIVALS, type CropKind,
 } from "./harvest";
+import FarmCanvas from "./FarmCanvas";
 
 const SEED_PRICES: Record<CropKind, number> = {
   turnip: 10, potato: 14, tomato: 20, corn: 26, strawberry: 34,
@@ -106,43 +107,11 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 <button className="seed-shop" onClick={() => setTab("shop")}>+ Buy seeds</button>
               </div>
 
-              {/* isometric-ish field */}
-              <div className="farm-grid">
-                {game.plots.map((p, i) => {
-                  const locked = i >= open;
-                  const growing = !!p.plantedAt;
-                  const prog = growing ? Math.min(1, (now - p.plantedAt!) / GROW_MS) : 0;
-                  const mature = growing && prog >= 1;
-                  const crop = p.crop ? CROPS[p.crop] : null;
-                  const stage = !growing ? -1 : prog < 0.4 ? 0 : prog < 1 ? 1 : 2;
-                  return (
-                    <div key={i} className={`tile-wrap`}>
-                      <button
-                        className={`tile ${locked ? "locked" : ""} ${mature ? "mature" : ""} ${growing ? "planted" : ""}`}
-                        onClick={() => (locked ? null : growing ? (mature ? harvestPlot(i) : null) : plant(i, sel))}
-                      >
-                        <div className="soil" />
-                        {locked ? (
-                          <span className="t-lock">🔒</span>
-                        ) : growing ? (
-                          <>
-                            <span className={`t-crop ${mature ? "pop" : ""}`}>{crop!.stages[stage]}</span>
-                            {!mature ? (
-                              <span className="t-prog"><span style={{ width: `${prog * 100}%` }} /></span>
-                            ) : (
-                              <span className="t-ready">READY</span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="t-plus">＋</span>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* walkable top-down farm (FarmTown style) */}
+              <FarmCanvas sel={sel} />
               <div className="farm-hint">
-                Pick a seed, click a soil plot to plant. Wait for it to grow, then click to harvest for XP.
+                Walk your farmer around with <b>WASD</b>/arrows (or click a plot to walk there).
+                Stand on a plot and press <b>E</b>/<b>Space</b> to plant your selected seed, then again to harvest when it's ready.
                 Locked plots open as you level up.
               </div>
             </>
