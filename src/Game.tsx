@@ -4,7 +4,7 @@ import {
   buySeed, poolShare, onToast,
 } from "./store";
 import {
-  MAX_LEVEL, MIN_POOL_LEVEL, MAX_PLOTS, SEED_COST, POOL_BPS, GROW_MS,
+  MAX_LEVEL, MIN_POOL_LEVEL, MAX_PLOTS, POOL_BPS, GROW_MS,
   xpForNext, unlockedPlots, CROPS, CROP_ORDER, RIVALS, type CropKind,
 } from "./harvest";
 
@@ -25,12 +25,14 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() =>
-    onToast((msg) => {
+  useEffect(() => {
+    const off = onToast((msg) => {
       setToast(msg);
       if (tRef.current) clearTimeout(tRef.current);
       tRef.current = window.setTimeout(() => setToast(null), 2200);
-    }), []);
+    });
+    return off;
+  }, []);
 
   const open = unlockedPlots(game.level);
   const eligible = game.level >= MIN_POOL_LEVEL;

@@ -95,7 +95,7 @@ export function isConnected() { return !!state.address; }
 /* ─────────────── game actions ─────────────── */
 
 const toastListeners = new Set<(msg: string) => void>();
-export function onToast(cb: (msg: string) => void) { toastListeners.add(cb); return () => toastListeners.delete(cb); }
+export function onToast(cb: (msg: string) => void) { toastListeners.add(cb); return () => { toastListeners.delete(cb); }; }
 export function toast(msg: string) { toastListeners.forEach((l) => l(msg)); }
 
 export function buySeed(crop: CropKind, price: number) {
