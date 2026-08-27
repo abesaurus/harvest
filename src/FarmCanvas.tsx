@@ -1,372 +1,559 @@
 import { useEffect, useRef } from "react";
 import {
-  getState, plant, harvestPlot, onToast,
+  getState, useToolAt, tickGrowth, idx, isUnlockedFarm,
+  isWatered, isWithered, cropProgress, onFloat, setTool,
 } from "./store";
-import { CROPS, GROW_MS, unlockedPlots, type CropKind } from "./harvest";
+import {
+  CROPS, MAP_W, MAP_H, TILE, FARM_X0, FARM_Y0, tillableTiles,
+} from "./harvest";
+import {
+  PAL, bakeFarmer, drawLegs, drawTool, drawCropSprite, drawTree, drawBush,
+  drawRock, drawFlower, drawWeeds, drawStump, drawWell, drawHouse, drawBarn,
+  drawShopStall, drawSilo, drawChicken, drawCow, drawScarecrow,
+  drawPixelText, pixelTextWidth, circleFill,
+  type Dir, type ToolKind,
+} from "./px";
 
 /* ═══════════════════════════════════════════════════════════
-   FarmCanvas — top-down walkable farm (FarmTown style)
-   • WASD / Arrow keys to walk, or click to walk to a spot
-   • Stand next to a plot and press E / Space to plant or harvest
-   • Click directly on a plot to auto-walk there and interact
-   Renders the 12 store plots as tilled soil tiles on a field.
+   FarmCanvas — pixel-art top-down farm, camera follows farmer
+   • WASD / arrows / on-screen dpad to walk
+   • Space or click a tile to use the equipped tool
+   • 1..5 hotkeys swap tools
    ═══════════════════════════════════════════════════════════ */
 
-const TILE = 84;          // plot cell size in px
-const COLS = 4;
-const ROWS = 3;           // 4 x 3 = 12 plots (== MAX_PLOTS)
-const REACH = 78;         // how close the farmer must be to interact
-const SPEED = 210;        // px / second
+const VIEW_W = 300;   // art pixels visible (before upscale)
+const VIEW_H = 190;
+const SPEED = 62;     // art px / second
+const REACH = 26;     // interaction reach in art px
 
-type Dir = "down" | "up" | "left" | "right";
+type Float = { x: number; y: number; text: string; color: string; born: number };
+type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number };
 
-export default function FarmCanvas({ sel }: { sel: CropKind }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const selRef = useRef<CropKind>(sel);
-  selRef.current = sel;
+export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) => void }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  const panelRef = useRef(onOpenPanel);
+  panelRef.current = onOpenPanel;
 
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const canvas = ref.current!;
+    const ctx = canvas.getContext("2d", { alpha: false })!;
+    const art = bakeFarmer();
 
-    // world size (field). Plots grid centered with margin for walking around.
-    const MARGIN_X = TILE * 0.9;
-    const MARGIN_TOP = TILE * 1.15;
-    const MARGIN_BOT = TILE * 1.0;
-    const W = COLS * TILE + MARGIN_X * 2;
-    const H = ROWS * TILE + MARGIN_TOP + MARGIN_BOT;
+    /* ── static world layer (baked once, redrawn on level change) ── */
+    const worldPx = { w: MAP_W * TILE, h: MAP_H * TILE };
+    const bg = document.createElement("canvas");
+    bg.width = worldPx.w; bg.height = worldPx.h;
+    const bgx = bg.getContext("2d")!;
+    let bakedLevel = -1;
 
+    // deterministic decoration list
+    let seed = 20260827;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    type Deco = { x: number; y: number; kind: string; s: number };
+    const decos: Deco[] = [];
+    {
+      const st = getState();
+      for (let i = 0; i < 220; i++) {
+        const tx = 1 + Math.floor(rnd() * (MAP_W - 2));
+        const ty = 1 + Math.floor(rnd() * (MAP_H - 2));
+        const t = st.tiles[idx(tx, ty)];
+        if (!t || t.kind !== "grass") continue;
+        const inField = tx >= FARM_X0 - 1 && tx <= FARM_X0 + 12 && ty >= FARM_Y0 - 1 && ty <= FARM_Y0 + 8;
+        if (inField) continue;
+        const r = rnd();
+        const kind = r < 0.16 ? "tree" : r < 0.3 ? "bush" : r < 0.42 ? "rock" : r < 0.72 ? "flower" : "stump";
+        decos.push({ x: tx * TILE, y: ty * TILE + TILE, kind, s: Math.floor(rnd() * 4) });
+      }
+    }
+
+    function bakeGround(level: number) {
+      const st = getState();
+      bgx.imageSmoothingEnabled = false;
+      // grass base with subtle noise
+      for (let ty = 0; ty < MAP_H; ty++) {
+        for (let tx = 0; tx < MAP_W; tx++) {
+          const t = st.tiles[idx(tx, ty)];
+          const X = tx * TILE, Y = ty * TILE;
+          // base grass
+          bgx.fillStyle = (tx + ty) % 2 ? PAL.grass1 : PAL.grass2;
+          bgx.fillRect(X, Y, TILE, TILE);
+          // grass texture tufts
+          bgx.fillStyle = PAL.grass3;
+          const h1 = ((tx * 7 + ty * 13) % 5);
+          bgx.fillRect(X + 2 + h1, Y + 3 + ((tx + ty) % 6), 1, 2);
+          bgx.fillRect(X + 9 - h1, Y + 10 - ((tx * 3 + ty) % 5), 1, 2);
+
+          if (t.kind === "path") {
+            bgx.fillStyle = PAL.path1; bgx.fillRect(X, Y, TILE, TILE);
+            bgx.fillStyle = PAL.path2;
+            for (let i = 0; i < 6; i++) {
+              const px = X + ((tx * 5 + i * 3 + ty) % TILE);
+              const py = Y + ((ty * 7 + i * 5 + tx) % TILE);
+              bgx.fillRect(px, py, 2, 1);
+            }
+            // edge shading against grass
+            bgx.fillStyle = PAL.pathEdge;
+            if (st.tiles[idx(tx, ty - 1)]?.kind !== "path") bgx.fillRect(X, Y, TILE, 1);
+            if (st.tiles[idx(tx, ty + 1)]?.kind !== "path") bgx.fillRect(X, Y + TILE - 1, TILE, 1);
+            if (st.tiles[idx(tx - 1, ty)]?.kind !== "path") bgx.fillRect(X, Y, 1, TILE);
+            if (st.tiles[idx(tx + 1, ty)]?.kind !== "path") bgx.fillRect(X + TILE - 1, Y, 1, TILE);
+          } else if (t.kind === "water") {
+            bgx.fillStyle = PAL.water2; bgx.fillRect(X, Y, TILE, TILE);
+            bgx.fillStyle = PAL.water1; bgx.fillRect(X, Y + 2, TILE, TILE - 4);
+            bgx.fillStyle = PAL.waterFoam;
+            bgx.fillRect(X + 3 + ((tx * 3) % 5), Y + 5, 3, 1);
+            bgx.fillRect(X + 8 - ((ty * 2) % 4), Y + 10, 2, 1);
+            // shoreline
+            const around = [[0, -1], [0, 1], [-1, 0], [1, 0]] as const;
+            bgx.fillStyle = "#c9b183";
+            for (const [dx, dy] of around) {
+              if (st.tiles[idx(tx + dx, ty + dy)]?.kind !== "water") {
+                if (dy === -1) bgx.fillRect(X, Y, TILE, 2);
+                if (dy === 1) bgx.fillRect(X, Y + TILE - 2, TILE, 2);
+                if (dx === -1) bgx.fillRect(X, Y, 2, TILE);
+                if (dx === 1) bgx.fillRect(X + TILE - 2, Y, 2, TILE);
+              }
+            }
+          }
+        }
+      }
+
+      // wild (locked) farmland: darker grass + scrub so the field reads as expandable
+      for (let ty = FARM_Y0; ty < FARM_Y0 + 8; ty++)
+        for (let tx = FARM_X0; tx < FARM_X0 + 12; tx++) {
+          if (isUnlockedFarm(tx, ty, level)) continue;
+          const X = tx * TILE, Y = ty * TILE;
+          bgx.fillStyle = "#4a7f36"; bgx.fillRect(X, Y, TILE, TILE);
+          bgx.fillStyle = "#3d6d2c";
+          bgx.fillRect(X + 2, Y + 4, 2, 5); bgx.fillRect(X + 9, Y + 8, 2, 5);
+          bgx.fillStyle = "#5c6b3a"; bgx.fillRect(X + 6, Y + 2, 1, 4);
+        }
+
+      // fence around the whole unlocked field
+      const { cols, rows } = tillableTiles(level);
+      bgx.fillStyle = PAL.woodDark;
+      const fx = FARM_X0 * TILE - 3, fy = FARM_Y0 * TILE - 3;
+      const fw = cols * TILE + 6, fh = rows * TILE + 6;
+      bgx.fillRect(fx, fy, fw, 2); bgx.fillRect(fx, fy + fh - 2, fw, 2);
+      bgx.fillRect(fx, fy, 2, fh); bgx.fillRect(fx + fw - 2, fy, 2, fh);
+      bgx.fillStyle = PAL.wood;
+      for (let x = fx; x < fx + fw; x += 12) { bgx.fillRect(x, fy - 3, 2, 7); bgx.fillRect(x, fy + fh - 4, 2, 7); }
+      for (let y = fy; y < fy + fh; y += 12) { bgx.fillRect(fx - 2, y, 6, 2); bgx.fillRect(fx + fw - 4, y, 6, 2); }
+
+      // outer world border fence
+      bgx.fillStyle = PAL.woodDark;
+      bgx.fillRect(0, TILE - 4, worldPx.w, 4);
+      bgx.fillRect(0, worldPx.h - TILE, worldPx.w, 4);
+      bgx.fillRect(TILE - 4, 0, 4, worldPx.h);
+      bgx.fillRect(worldPx.w - TILE, 0, 4, worldPx.h);
+      bgx.fillStyle = PAL.wood;
+      for (let x = 0; x < worldPx.w; x += 16) {
+        bgx.fillRect(x, TILE - 8, 3, 12);
+        bgx.fillRect(x, worldPx.h - TILE - 4, 3, 12);
+      }
+      for (let y = 0; y < worldPx.h; y += 16) {
+        bgx.fillRect(TILE - 8, y, 12, 3);
+        bgx.fillRect(worldPx.w - TILE - 4, y, 12, 3);
+      }
+
+      bakedLevel = level;
+    }
+
+    /* ── canvas sizing: integer upscale, crisp pixels ── */
+    let scale = 3;
     function resize() {
-      canvas.width = W * DPR;
-      canvas.height = H * DPR;
-      canvas.style.width = "100%";
-      canvas.style.aspectRatio = `${W} / ${H}`;
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const parent = canvas.parentElement!;
+      const availW = parent.clientWidth;
+      const availH = Math.max(260, Math.min(window.innerHeight - 210, 620));
+      scale = Math.max(2, Math.min(Math.floor(availW / VIEW_W), Math.floor(availH / VIEW_H)));
+      canvas.width = VIEW_W * scale;
+      canvas.height = VIEW_H * scale;
+      canvas.style.width = `${VIEW_W * scale}px`;
+      canvas.style.height = `${VIEW_H * scale}px`;
+      ctx.imageSmoothingEnabled = false;
     }
     resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas.parentElement!);
+    window.addEventListener("resize", resize);
 
-    // plot i -> world rect (top-left)
-    function plotRect(i: number) {
-      const c = i % COLS;
-      const r = Math.floor(i / COLS);
-      return {
-        x: MARGIN_X + c * TILE,
-        y: MARGIN_TOP + r * TILE,
-        cx: MARGIN_X + c * TILE + TILE / 2,
-        cy: MARGIN_TOP + r * TILE + TILE / 2,
-      };
-    }
-
-    // ── farmer state ──
+    /* ── player ── */
     const player = {
-      x: W / 2,
-      y: H - MARGIN_BOT * 0.4,
-      dir: "up" as Dir,
-      moving: false,
-      step: 0, // walk-cycle phase
+      x: 20 * TILE + 8, y: 10 * TILE + 8,
+      dir: "down" as Dir, moving: false, step: 0,
+      swing: 0,       // 0 = idle, >0 tool animation running
     };
     const keys = new Set<string>();
-    let target: { x: number; y: number } | null = null;
-    let pendingPlot: number | null = null;
+    let walkTarget: { x: number; y: number } | null = null;
+    let queuedTile: { x: number; y: number } | null = null;
 
-    // ── input ──
+    const floats: Float[] = [];
+    const parts: Particle[] = [];
+    const offFloat = onFloat((x, y, text, color) => {
+      floats.push({ x, y, text, color, born: performance.now() });
+      const col = color;
+      for (let i = 0; i < 8; i++)
+        parts.push({
+          x, y: y + 6, vx: (Math.random() - 0.5) * 26, vy: -18 - Math.random() * 22,
+          life: 0.5 + Math.random() * 0.35, color: col, size: Math.random() < 0.5 ? 1 : 2,
+        });
+    });
+
+    /* ── input ── */
+    const MOVE_KEYS = ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"];
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(k)) {
-        keys.add(k);
-        target = null; pendingPlot = null; // manual walking cancels click-walk
-        e.preventDefault();
-      }
-      if (k === "e" || k === " ") { interactNearest(); e.preventDefault(); }
+      if (MOVE_KEYS.includes(k)) { keys.add(k); walkTarget = null; queuedTile = null; e.preventDefault(); }
+      if (k === " " || k === "e") { act(); e.preventDefault(); }
+      const tools = ["hoe", "seed", "can", "scythe", "hand"] as const;
+      const n = parseInt(k, 10);
+      if (n >= 1 && n <= 5) { setTool(tools[n - 1]); e.preventDefault(); }
     };
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
 
-    // click → walk (and auto-interact if it's a plot)
-    function pointerToWorld(ev: PointerEvent) {
+    // expose dpad control for the on-screen buttons
+    (window as any).__farmDpad = (dir: Dir | null, down: boolean) => {
+      const map: Record<Dir, string> = { up: "w", down: "s", left: "a", right: "d" };
+      if (!dir) { keys.clear(); return; }
+      if (down) { keys.add(map[dir]); walkTarget = null; } else keys.delete(map[dir]);
+    };
+    (window as any).__farmAct = () => act();
+
+    /* camera */
+    const cam = { x: player.x - VIEW_W / 2, y: player.y - VIEW_H / 2 };
+
+    function screenToWorld(ev: PointerEvent) {
       const r = canvas.getBoundingClientRect();
-      return { x: ((ev.clientX - r.left) / r.width) * W, y: ((ev.clientY - r.top) / r.height) * H };
+      const sx = (ev.clientX - r.left) / r.width * VIEW_W;
+      const sy = (ev.clientY - r.top) / r.height * VIEW_H;
+      return { x: sx + cam.x, y: sy + cam.y };
     }
+
     const onPointerDown = (ev: PointerEvent) => {
-      const p = pointerToWorld(ev);
-      const open = unlockedPlots(getState().level);
-      pendingPlot = null;
-      for (let i = 0; i < COLS * ROWS; i++) {
-        const pr = plotRect(i);
-        if (p.x >= pr.x && p.x <= pr.x + TILE && p.y >= pr.y && p.y <= pr.y + TILE) {
-          if (i < open) { pendingPlot = i; target = standSpot(i); }
-          return;
-        }
+      const w = screenToWorld(ev);
+      const tx = Math.floor(w.x / TILE), ty = Math.floor(w.y / TILE);
+      if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) return;
+      const dist = Math.hypot(tx * TILE + 8 - player.x, ty * TILE + 8 - player.y);
+      if (dist <= REACH) {
+        useToolAt(tx, ty);
+        player.swing = 1;
+      } else {
+        // walk toward it, then act
+        walkTarget = { x: tx * TILE + 8, y: ty * TILE + 14 };
+        queuedTile = { x: tx, y: ty };
       }
-      target = { x: clamp(p.x, 24, W - 24), y: clamp(p.y, 40, H - 24) };
     };
     canvas.addEventListener("pointerdown", onPointerDown);
 
-    // a spot just below a plot to stand while working it
-    function standSpot(i: number) {
-      const pr = plotRect(i);
-      return { x: pr.cx, y: Math.min(pr.cy + TILE * 0.55, H - 22) };
+    /** tile the farmer is standing on */
+    function underTile() {
+      return { tx: Math.floor(player.x / TILE), ty: Math.floor(player.y / TILE) };
+    }
+    /** tile directly in front of the farmer */
+    function facingTile() {
+      const off: Record<Dir, [number, number]> = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+      const [dx, dy] = off[player.dir];
+      const u = underTile();
+      return { tx: u.tx + dx, ty: u.ty + dy };
     }
 
-    function nearestPlot(): number | null {
-      const open = unlockedPlots(getState().level);
-      let best: number | null = null, bestD = REACH;
-      for (let i = 0; i < open; i++) {
-        const pr = plotRect(i);
-        const d = Math.hypot(pr.cx - player.x, pr.cy - player.y);
-        if (d < bestD) { bestD = d; best = i; }
-      }
-      return best;
+    function act() {
+      // 1) the tile under the feet (what the highlight shows)
+      const u = underTile();
+      if (useToolAt(u.tx, u.ty)) { player.swing = 1; return; }
+      // 2) fall back to the tile in front, so fences/edges still work
+      const f = facingTile();
+      useToolAt(f.tx, f.ty);
+      player.swing = 1;
     }
 
-    function interactPlot(i: number) {
+    /* ── collision ── */
+    function solid(px: number, py: number) {
       const st = getState();
-      const p = st.plots[i];
-      if (!p.plantedAt) {
-        plant(i, selRef.current);
-      } else if (Date.now() - p.plantedAt >= GROW_MS) {
-        harvestPlot(i);
-      }
+      const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+      if (tx < 1 || ty < 1 || tx >= MAP_W - 1 || ty >= MAP_H - 1) return true;
+      const t = st.tiles[idx(tx, ty)];
+      if (!t) return true;
+      if (t.kind === "blocked" || t.kind === "water") return true;
+      return false;
     }
-    function interactNearest() {
-      const i = nearestPlot();
-      if (i != null) interactPlot(i);
+    function tryMove(nx: number, ny: number) {
+      // feet-based box collision (player is 14 wide, feet at y)
+      const fx = 4, fy = 2;
+      if (!solid(nx - fx, player.y + fy) && !solid(nx + fx, player.y + fy)) player.x = nx;
+      if (!solid(player.x - fx, ny + fy) && !solid(player.x + fx, ny + fy)) player.y = ny;
     }
 
-    // ── main loop ──
-    let raf = 0;
-    let last = performance.now();
-    function frame(t: number) {
-      const dt = Math.min(0.05, (t - last) / 1000);
-      last = t;
-      update(dt);
-      draw();
+    /* ── loop ── */
+    let raf = 0, last = performance.now(), tGrow = 0;
+    function frame(now: number) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      update(dt, now);
+      render(now);
       raf = requestAnimationFrame(frame);
     }
 
-    function update(dt: number) {
+    function update(dt: number, now: number) {
+      const st = getState();
+      if (bakedLevel !== st.level) bakeGround(st.level);
+
+      tGrow += dt;
+      if (tGrow > 0.4) { tickGrowth(Date.now()); tGrow = 0; }
+
       let dx = 0, dy = 0;
       if (keys.has("arrowup") || keys.has("w")) dy -= 1;
       if (keys.has("arrowdown") || keys.has("s")) dy += 1;
       if (keys.has("arrowleft") || keys.has("a")) dx -= 1;
       if (keys.has("arrowright") || keys.has("d")) dx += 1;
 
-      if (dx === 0 && dy === 0 && target) {
-        const tx = target.x - player.x, ty = target.y - player.y;
-        const dist = Math.hypot(tx, ty);
-        if (dist < 4) {
-          target = null;
-          if (pendingPlot != null) { interactPlot(pendingPlot); pendingPlot = null; }
-        } else { dx = tx / dist; dy = ty / dist; }
+      if (dx === 0 && dy === 0 && walkTarget) {
+        const tx = walkTarget.x - player.x, ty = walkTarget.y - player.y;
+        const d = Math.hypot(tx, ty);
+        if (d < 3) {
+          walkTarget = null;
+          if (queuedTile) { useToolAt(queuedTile.x, queuedTile.y); player.swing = 1; queuedTile = null; }
+        } else { dx = tx / d; dy = ty / d; }
       }
 
-      const len = Math.hypot(dx, dy) || 1;
       player.moving = dx !== 0 || dy !== 0;
       if (player.moving) {
-        player.x = clamp(player.x + (dx / len) * SPEED * dt, 20, W - 20);
-        player.y = clamp(player.y + (dy / len) * SPEED * dt, 34, H - 18);
+        const l = Math.hypot(dx, dy) || 1;
+        tryMove(player.x + (dx / l) * SPEED * dt, player.y + (dy / l) * SPEED * dt);
         if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? "right" : "left";
-        else player.dir = dy > 0 ? "down" : "up";
-        player.step += dt * 9;
-      } else player.step = 0;
+        else if (dy !== 0) player.dir = dy > 0 ? "down" : "up";
+        player.step += dt * 7.5;
+      }
+
+      if (player.swing > 0) player.swing = Math.max(0, player.swing - dt * 3.2);
+
+      // camera follow with clamp + slight smoothing
+      const tcx = Math.round(player.x - VIEW_W / 2);
+      const tcy = Math.round(player.y - VIEW_H / 2);
+      cam.x += (tcx - cam.x) * Math.min(1, dt * 9);
+      cam.y += (tcy - cam.y) * Math.min(1, dt * 9);
+      cam.x = Math.max(0, Math.min(worldPx.w - VIEW_W, cam.x));
+      cam.y = Math.max(0, Math.min(worldPx.h - VIEW_H, cam.y));
+
+      // particles
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        p.life -= dt;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 70 * dt;
+        if (p.life <= 0) parts.splice(i, 1);
+      }
+      // floats expire
+      for (let i = floats.length - 1; i >= 0; i--)
+        if (now - floats[i].born > 1100) floats.splice(i, 1);
     }
 
-    function draw() {
-      const now = Date.now();
+    function render(now: number) {
       const st = getState();
-      const open = unlockedPlots(st.level);
-      ctx.clearRect(0, 0, W, H);
+      const nowMs = Date.now();
+      const camX = Math.round(cam.x), camY = Math.round(cam.y);
 
-      // grass base + checker
-      ctx.fillStyle = "#6cbf49";
-      ctx.fillRect(0, 0, W, H);
-      for (let y = 0; y < H; y += 28)
-        for (let x = 0; x < W; x += 28) {
-          if (((x / 28) + (y / 28)) % 2 === 0) {
-            ctx.fillStyle = "rgba(255,255,255,0.045)";
-            ctx.fillRect(x, y, 28, 28);
+      ctx.save();
+      ctx.scale(scale, scale);
+      ctx.imageSmoothingEnabled = false;
+
+      // ground layer
+      ctx.drawImage(bg, -camX, -camY);
+
+      const sway = Math.sin(now / 620) * 1.2;
+
+      // ── tilled soil + crops (only visible tiles) ──
+      const tx0 = Math.max(0, Math.floor(camX / TILE)), tx1 = Math.min(MAP_W - 1, Math.ceil((camX + VIEW_W) / TILE));
+      const ty0 = Math.max(0, Math.floor(camY / TILE)), ty1 = Math.min(MAP_H - 1, Math.ceil((camY + VIEW_H) / TILE));
+
+      for (let ty = ty0; ty <= ty1; ty++) {
+        for (let tx = tx0; tx <= tx1; tx++) {
+          const t = st.tiles[idx(tx, ty)];
+          if (!t) continue;
+          const X = tx * TILE - camX, Y = ty * TILE - camY;
+
+          if (t.tilled) {
+            const wet = isWatered(t, nowMs);
+            ctx.fillStyle = wet ? PAL.soilWet1 : PAL.soilDry;
+            ctx.fillRect(X, Y, TILE, TILE);
+            ctx.fillStyle = wet ? PAL.soilWet2 : PAL.soil2;
+            ctx.fillRect(X, Y + 1, TILE, TILE - 2);
+            // furrow rows
+            ctx.fillStyle = "rgba(0,0,0,0.18)";
+            ctx.fillRect(X, Y + 4, TILE, 1);
+            ctx.fillRect(X, Y + 9, TILE, 1);
+            ctx.fillRect(X, Y + 14, TILE, 1);
+            // clod highlights
+            ctx.fillStyle = wet ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.09)";
+            ctx.fillRect(X + 2 + ((tx * 3) % 4), Y + 2, 2, 1);
+            ctx.fillRect(X + 9 - ((ty * 2) % 3), Y + 11, 2, 1);
+            if (wet) {
+              ctx.fillStyle = "rgba(90,180,235,0.20)";
+              ctx.fillRect(X, Y, TILE, TILE);
+            }
+          }
+
+          if (t.weeds) drawWeeds(ctx, X, Y + TILE);
+
+          if (t.crop) {
+            const prog = cropProgress(t, nowMs);
+            const withered = isWithered(t, nowMs);
+            const stage: 0 | 1 | 2 | 3 = prog >= 1 ? 3 : prog > 0.6 ? 2 : prog > 0.22 ? 1 : 0;
+            drawCropSprite(ctx, X, Y, CROPS[t.crop].art, stage, withered, sway);
+            if (prog >= 1 && !withered) {
+              // ready sparkle
+              const b = Math.sin(now / 200) > 0 ? 1 : 0;
+              ctx.fillStyle = b ? "#fff8b0" : "#ffe45c";
+              ctx.fillRect(X + 12, Y + 1, 1, 1);
+              ctx.fillRect(X + 3, Y + 3, 1, 1);
+            } else if (!isWatered(t, nowMs) && !withered) {
+              // thirsty marker
+              ctx.fillStyle = "rgba(0,0,0,0.35)";
+              ctx.fillRect(X + 6, Y - 5, 5, 5);
+              ctx.fillStyle = "#7fd4f5";
+              ctx.fillRect(X + 8, Y - 4, 1, 2);
+              ctx.fillRect(X + 7, Y - 2, 3, 1);
+            }
           }
         }
-
-      // wooden fence border
-      drawFence(W, H);
-
-      const active = nearestPlot();
-
-      // plots
-      for (let i = 0; i < COLS * ROWS; i++) {
-        const pr = plotRect(i);
-        const locked = i >= open;
-        drawPlot(pr.x, pr.y, locked, i === active && !locked);
-        if (locked) continue;
-
-        const p = st.plots[i];
-        if (p.plantedAt && p.crop) {
-          const prog = Math.min(1, (now - p.plantedAt) / GROW_MS);
-          const mature = prog >= 1;
-          drawCrop(pr.cx, pr.y + TILE * 0.62, p.crop, prog);
-          // growth bar
-          if (!mature) {
-            const bw = TILE * 0.62, bx = pr.cx - bw / 2, by = pr.y + TILE - 12;
-            ctx.fillStyle = "rgba(0,0,0,0.35)";
-            roundRect(bx, by, bw, 6, 3); ctx.fill();
-            ctx.fillStyle = "#ffd93d";
-            roundRect(bx, by, bw * prog, 6, 3); ctx.fill();
-          } else {
-            bubble(pr.cx, pr.y + 6, "READY");
-          }
-        }
       }
 
-      // interaction prompt above active plot
-      if (active != null) {
-        const pr = plotRect(active);
-        const p = st.plots[active];
-        let label = "";
-        if (!p.plantedAt) label = `E · plant ${CROPS[selRef.current].name}`;
-        else if (now - (p.plantedAt || 0) >= GROW_MS) label = "E · harvest 🌾";
-        else label = "growing…";
-        if (label) bubble(pr.cx, pr.y - 8, label);
+      /* ── buildings & props (y-sorted with the player) ── */
+      type Drawable = { y: number; fn: () => void };
+      const q: Drawable[] = [];
+
+      const push = (y: number, fn: () => void) => q.push({ y, fn });
+
+      // decorations
+      for (const d of decos) {
+        const X = d.x - camX, Y = d.y - camY;
+        if (X < -40 || X > VIEW_W + 40 || Y < -50 || Y > VIEW_H + 50) continue;
+        if (d.kind === "tree") push(d.y, () => drawTree(ctx, X, Y, d.s));
+        else if (d.kind === "bush") push(d.y, () => drawBush(ctx, X, Y));
+        else if (d.kind === "rock") push(d.y, () => drawRock(ctx, X, Y));
+        else if (d.kind === "flower") push(d.y, () => drawFlower(ctx, X, Y, d.s));
+        else push(d.y, () => drawStump(ctx, X, Y));
       }
 
-      drawFarmer(player);
-    }
+      // structures (world coords → bottom anchored)
+      push((4 + 3) * TILE, () => drawHouse(ctx, 3 * TILE - camX, (4 + 3) * TILE - camY));
+      push((4 + 3) * TILE + 1, () => drawBarn(ctx, 24 * TILE - camX, (4 + 3) * TILE - camY));
+      push((6 + 2) * TILE, () => drawShopStall(ctx, 14 * TILE - camX, (6 + 2) * TILE - camY));
+      push((3 + 4) * TILE, () => drawSilo(ctx, 30 * TILE - camX, (3 + 4) * TILE - camY));
+      push((3 + 2) * TILE, () => drawWell(ctx, 11 * TILE - camX, (3 + 2) * TILE - camY));
+      push((FARM_Y0 - 1) * TILE, () => drawScarecrow(ctx, (FARM_X0 + 13) * TILE - camX, (FARM_Y0 + 1) * TILE - camY));
 
-    /* ── drawing helpers ── */
-    function roundRect(x: number, y: number, w: number, h: number, r: number) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
-    }
+      // animals wandering (deterministic loops)
+      const af = Math.floor(now / 300);
+      const chick = (bx: number, by: number, ph: number) => {
+        const t = now / 1000 + ph;
+        const ox = Math.sin(t * 0.6) * 14, oy = Math.cos(t * 0.45) * 8;
+        const wx = bx * TILE + ox, wy = by * TILE + oy;
+        push(wy, () => drawChicken(ctx, wx - camX, wy - camY, af));
+      };
+      chick(28, 12, 0); chick(30, 14, 2.1); chick(27, 15, 4.2);
+      const cowT = now / 1000;
+      const cwx = 5 * TILE + Math.sin(cowT * 0.25) * 22, cwy = 22 * TILE + Math.cos(cowT * 0.2) * 10;
+      push(cwy, () => drawCow(ctx, cwx - camX, cwy - camY, Math.floor(now / 420)));
+      const cwx2 = 8 * TILE + Math.sin(cowT * 0.19 + 2) * 18, cwy2 = 25 * TILE;
+      push(cwy2, () => drawCow(ctx, cwx2 - camX, cwy2 - camY, Math.floor(now / 500)));
 
-    function drawFence(w: number, h: number) {
-      ctx.fillStyle = "#8a5a2a";
-      const t = 10;
-      ctx.fillRect(0, 0, w, t);
-      ctx.fillRect(0, h - t, w, t);
-      ctx.fillRect(0, 0, t, h);
-      ctx.fillRect(w - t, 0, t, h);
-      ctx.fillStyle = "#a5703a";
-      for (let x = 8; x < w - 8; x += 34) { ctx.fillRect(x, 2, 6, 16); ctx.fillRect(x, h - 18, 6, 16); }
-      for (let y = 8; y < h - 8; y += 34) { ctx.fillRect(2, y, 16, 6); ctx.fillRect(w - 18, y, 16, 6); }
-    }
+      // the farmer
+      push(player.y, () => drawPlayer(now));
 
-    function drawPlot(x: number, y: number, locked: boolean, hi: boolean) {
-      const pad = 6, s = TILE - pad * 2;
-      if (locked) {
-        ctx.fillStyle = "#4f8f34";
-        roundRect(x + pad, y + pad, s, s, 10); ctx.fill();
-        ctx.fillStyle = "rgba(0,0,0,0.28)";
-        ctx.font = "30px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("🔒", x + TILE / 2, y + TILE / 2);
-        return;
+      q.sort((a, b) => a.y - b.y);
+      for (const d of q) d.fn();
+
+      /* ── target highlight on the tile under the farmer ── */
+      const { tx, ty } = underTile();
+      if (tx >= 0 && ty >= 0 && tx < MAP_W && ty < MAP_H) {
+        const t = st.tiles[idx(tx, ty)];
+        const X = tx * TILE - camX, Y = ty * TILE - camY;
+        const canAct = t && t.kind !== "blocked";
+        ctx.strokeStyle = canAct ? "rgba(255,248,176,0.9)" : "rgba(255,90,80,0.7)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(X + 0.5, Y + 0.5, TILE - 1, TILE - 1);
       }
-      // tilled soil
-      ctx.fillStyle = "#6b4423";
-      roundRect(x + pad, y + pad, s, s, 10); ctx.fill();
-      ctx.fillStyle = "#7d5029";
-      roundRect(x + pad + 2, y + pad + 2, s - 4, s - 4, 8); ctx.fill();
-      // furrows
-      ctx.strokeStyle = "rgba(0,0,0,0.16)"; ctx.lineWidth = 3;
-      for (let r = 1; r <= 3; r++) {
-        const yy = y + pad + (s / 4) * r;
-        ctx.beginPath(); ctx.moveTo(x + pad + 6, yy); ctx.lineTo(x + pad + s - 6, yy); ctx.stroke();
+
+      /* ── particles ── */
+      for (const p of parts) {
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2));
+        ctx.fillStyle = p.color;
+        ctx.fillRect(Math.round(p.x - camX), Math.round(p.y - camY), p.size, p.size);
       }
-      if (hi) {
-        ctx.strokeStyle = "#fff2a8"; ctx.lineWidth = 3;
-        roundRect(x + pad - 1, y + pad - 1, s + 2, s + 2, 11); ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      /* ── floating text ── */
+      for (const f of floats) {
+        const age = (now - f.born) / 1100;
+        const y = f.y - camY - 8 - age * 14;
+        const x = Math.round(f.x - camX - pixelTextWidth(f.text) / 2);
+        ctx.globalAlpha = Math.max(0, 1 - age);
+        ctx.fillStyle = "rgba(20,14,8,0.55)";
+        ctx.fillRect(x - 1, Math.round(y) - 1, pixelTextWidth(f.text) + 2, 7);
+        drawPixelText(ctx, f.text, x, Math.round(y), f.color);
+        ctx.globalAlpha = 1;
       }
+
+      /* ── vignette for depth ── */
+      const grd = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      grd.addColorStop(0, "rgba(0,0,0,0.10)");
+      grd.addColorStop(0.35, "rgba(0,0,0,0)");
+      grd.addColorStop(1, "rgba(0,0,0,0.13)");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      /* ── mini compass hint on locked land ── */
+      ctx.restore();
     }
 
-    function drawCrop(cx: number, cy: number, crop: CropKind, prog: number) {
-      // stage emoji scaled by growth
-      const stages = CROPS[crop].stages;
-      const stage = prog < 0.4 ? 0 : prog < 1 ? 1 : 2;
-      const size = 22 + prog * 22;
-      ctx.font = `${size}px system-ui`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      // little shadow
-      ctx.fillStyle = "rgba(0,0,0,0.18)";
-      ctx.beginPath(); ctx.ellipse(cx, cy + size * 0.42, size * 0.32, size * 0.13, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillText(stages[stage], cx, cy);
-    }
+    function drawPlayer(_now: number) {
+      const camX = Math.round(cam.x), camY = Math.round(cam.y);
+      const sx = Math.round(player.x - camX - 7);
+      const sy = Math.round(player.y - camY - 19);
+      const frame = Math.floor(player.step) % 4;
+      const bob = player.moving && (frame === 1 || frame === 3) ? 1 : 0;
 
-    function bubble(cx: number, cy: number, text: string) {
-      ctx.font = "600 12px system-ui";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      const w = ctx.measureText(text).width + 16;
-      ctx.fillStyle = "rgba(24,18,10,0.85)";
-      roundRect(cx - w / 2, cy - 20, w, 18, 9); ctx.fill();
-      ctx.fillStyle = "#ffe9a8";
-      ctx.fillText(text, cx, cy - 11);
-    }
-
-    function drawFarmer(p: typeof player) {
-      const x = Math.round(p.x), y = Math.round(p.y);
-      const bob = p.moving ? Math.sin(p.step) * 2 : 0;
       // shadow
       ctx.fillStyle = "rgba(0,0,0,0.22)";
-      ctx.beginPath(); ctx.ellipse(x, y + 14, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
+      circleFill(ctx, sx + 7, sy + 21, 5);
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      circleFill(ctx, sx + 7, sy + 21, 6);
 
-      const legSwing = p.moving ? Math.sin(p.step) * 3 : 0;
-      // legs
-      ctx.fillStyle = "#3a5cc4";
-      ctx.fillRect(x - 6, y + 4 - bob, 5, 10 + legSwing);
-      ctx.fillRect(x + 1, y + 4 - bob, 5, 10 - legSwing);
-      // body (overalls)
-      ctx.fillStyle = "#2f7ed8";
-      roundRect(x - 9, y - 12 - bob, 18, 18, 5); ctx.fill();
-      ctx.fillStyle = "#e9552f"; // shirt collar
-      ctx.fillRect(x - 9, y - 12 - bob, 18, 5);
-      // arms
-      ctx.fillStyle = "#f0c39a";
-      ctx.fillRect(x - 12, y - 9 - bob, 4, 11);
-      ctx.fillRect(x + 8, y - 9 - bob, 4, 11);
-      // head
-      ctx.fillStyle = "#f6cfa2";
-      roundRect(x - 8, y - 26 - bob, 16, 15, 6); ctx.fill();
-      // straw hat
-      ctx.fillStyle = "#e3b23c";
-      ctx.beginPath(); ctx.ellipse(x, y - 24 - bob, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#c8971f";
-      roundRect(x - 7, y - 33 - bob, 14, 9, 4); ctx.fill();
-      // face (eyes) by direction
-      ctx.fillStyle = "#3a2a1a";
-      if (p.dir !== "up") {
-        const off = p.dir === "left" ? -2 : p.dir === "right" ? 2 : 0;
-        ctx.fillRect(x - 4 + off, y - 20 - bob, 2, 2);
-        ctx.fillRect(x + 3 + off, y - 20 - bob, 2, 2);
+      drawLegs(ctx, sx, sy - bob, player.dir, frame, player.moving);
+      const spr = art.body[player.dir];
+      ctx.drawImage(spr, sx, sy - bob);
+
+      const st = getState();
+      const tool = st.tool as ToolKind;
+      const swingPhase = player.swing > 0 ? 1 - player.swing : 0;
+      drawTool(ctx, sx, sy - bob, player.dir, tool, swingPhase);
+
+      // seed held: show the crop colour in hand
+      if (st.tool === "seed") {
+        const c = CROPS[st.sel].art.fruit;
+        ctx.fillStyle = c;
+        const hx = player.dir === "left" ? sx + 1 : player.dir === "right" ? sx + 11 : sx + 10;
+        ctx.fillRect(hx, sy + 12 - bob, 2, 2);
       }
     }
 
-    function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
-
+    bakeGround(getState().level);
     raf = requestAnimationFrame(frame);
-    const offToast = onToast(() => {}); // keep store warm (no-op subscribe)
 
     return () => {
       cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", resize);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("pointerdown", onPointerDown);
-      offToast();
+      offFloat();
+      delete (window as any).__farmDpad;
+      delete (window as any).__farmAct;
     };
   }, []);
 
-  return (
-    <div className="canvas-wrap">
-      <canvas ref={canvasRef} className="farm-canvas" />
-      <div className="canvas-help">
-        <span><b>WASD</b> / <b>arrows</b> to walk</span>
-        <span><b>Click</b> a plot to walk there</span>
-        <span><b>E</b> / <b>Space</b> to plant &amp; harvest</span>
-      </div>
-    </div>
-  );
+  return <canvas ref={ref} className="farm-canvas" />;
 }
