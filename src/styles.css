@@ -559,7 +559,7 @@ img, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
   font-family: var(--pixfont); font-size: 11px; color: #fff4d6;
   text-shadow: 0 2px 0 rgba(0, 0, 0, .45); letter-spacing: .3px; margin-right: 4px;
 }
-.hud-logo svg { filter: drop-shadow(0 1px 0 rgba(0,0,0,.4)); }
+.hud-logo img { filter: drop-shadow(0 1px 0 rgba(0,0,0,.4)); }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--parch); border: 2px solid #7a5227; border-radius: 3px;

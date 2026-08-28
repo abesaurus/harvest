@@ -13,41 +13,20 @@ import CopyCA from "./CopyCA";
    Regenerate the hero art:  npm run bg -- --time=dusk --seed=11
    ═══════════════════════════════════════════════════════════ */
 
-/* — Ponsfarm logo mark: a chunky pixel-block "P" whose top is crowned
-     by a green sprout — retro pixel-farm feel matching the game art.
-     Scales cleanly from favicon to hero. currentColor drives the P
-     blocks; the leaves use their own greens. — */
+/* — Ponsfarm logo mark: official farmer-mascot artwork (public/logo.png).
+     Rendered as an <img> so the exact brand art (straw hat, blue overalls,
+     hoe) shows everywhere: navbar, loading, HUD, favicon. — */
 export function Logo({ size = 40 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 48 48" width={size} height={size} fill="none" aria-hidden>
-      <defs>
-        <linearGradient id="ph-leaf" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#b6ff7a" />
-          <stop offset="1" stopColor="#35c14a" />
-        </linearGradient>
-        <linearGradient id="ph-stem" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#3f8f36" />
-          <stop offset="1" stopColor="#67c257" />
-        </linearGradient>
-      </defs>
-      {/* pixel-block "P" — drawn with crisp rects for an 8-bit look */}
-      <g fill="currentColor" shapeRendering="crispEdges">
-        {/* left spine */}
-        <rect x="12" y="15" width="6" height="27" />
-        {/* top bar */}
-        <rect x="18" y="15" width="12" height="6" />
-        {/* middle bar (bowl bottom) */}
-        <rect x="18" y="26" width="12" height="6" />
-        {/* bowl right edge */}
-        <rect x="30" y="18" width="6" height="9" />
-      </g>
-      {/* sprout stem rising out of the top-left of the P */}
-      <path d="M15 15 C15 9 15 7 15 5" stroke="url(#ph-stem)" strokeWidth="2.6" strokeLinecap="round" />
-      {/* right leaf */}
-      <path d="M15 7 C18 3 24 3 24 3 C24 3 24 9 20.5 11.5 C18 13 15 11.5 15 11.5 Z" fill="url(#ph-leaf)" />
-      {/* left leaf */}
-      <path d="M15 9 C12 6 7 7 7 7 C7 7 7.5 12 10.5 13.5 C13 14.8 15 13 15 13 Z" fill="url(#ph-stem)" />
-    </svg>
+    <img
+      src="/logo.png"
+      width={size}
+      height={size}
+      alt=""
+      aria-hidden
+      draggable={false}
+      style={{ objectFit: "contain", display: "block" }}
+    />
   );
 }
 
