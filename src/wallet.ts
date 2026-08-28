@@ -46,8 +46,8 @@ export const POOL_REWARD = 10_000;         // PONS per round
 /* ── Round timing: a round runs 2 days, then payouts are settled ── */
 /** Length of one pool round. */
 export const ROUND_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
-/** Fixed anchor so every client agrees on round boundaries (UTC). */
-export const ROUND_EPOCH = Date.UTC(2026, 7, 28, 0, 0, 0); // 2026-08-28T00:00Z
+/** Fixed anchor so every client agrees on round boundaries. 01:00 UTC = 08:00 WIB. */
+export const ROUND_EPOCH = Date.UTC(2026, 7, 28, 1, 0, 0); // 2026-08-28 01:00 UTC = 08:00 WIB
 
 export type RoundInfo = { index: number; startsAt: number; endsAt: number; remainingMs: number };
 
