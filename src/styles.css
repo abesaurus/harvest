@@ -349,6 +349,16 @@ img, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 .pb-row.me { background: #eaffe2; }
 .pb-row.me .pb-n { color: var(--grn-d); font-weight: 900; }
 
+/* countdown urgency — final hour pulses amber/red */
+.rs-c.urgent, .rb-c.urgent, .efr-c.urgent {
+  color: #ff8f5a;
+  animation: cdpulse 1.1s ease-in-out infinite;
+}
+@keyframes cdpulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
 /* live-board status footer */
 .board-foot {
   display: flex; align-items: center; gap: 7px;

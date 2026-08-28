@@ -15,6 +15,7 @@ import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
 import { Logo } from "./Landing";
 import { useBoard } from "./useBoard";
+import { useRound } from "./useRound";
 
 const TOOL_IC: Record<ToolId, (p: { size?: number }) => React.ReactElement> = {
   hoe: ToolIcon.hoe, seed: ToolIcon.seed, can: ToolIcon.can,
@@ -60,6 +61,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
   const barnTotal = CROP_ORDER.reduce((s, c) => s + g.barn[c], 0);
   const barnValue = CROP_ORDER.reduce((s, c) => s + g.barn[c] * CROPS[c].sell, 0);
   const pool = poolStats();
+  const round = useRound();
 
   // live board (api.ponsfarm.online) — falls back to local-only when offline
   const board = useBoard({
@@ -300,10 +302,10 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   No inflation, no printing.
                 </p>
 
-                {/* pool status — timer hidden until launch */}
+                {/* pool status — live countdown to the round boundary (21:00 WIB) */}
                 <div className="round-banner sm">
-                  <span className="rb-k">FARMER'S POOL</span>
-                  <span className="rb-c">opens soon</span>
+                  <span className="rb-k">ROUND {round.index} ENDS IN</span>
+                  <span className={`rb-c ${round.ending ? "urgent" : ""}`}>{round.label}</span>
                 </div>
 
                 {/* basis-rate estimate against the whole leaderboard */}

@@ -4,6 +4,7 @@ import PixelIcon from "./PixelIcon";
 import type { HoldInfo } from "./wallet";
 import { PONSFARM_TOKEN, PONS_BUY_URL } from "./wallet";
 import CopyCA from "./CopyCA";
+import { useRound } from "./useRound";
 
 /* ═══════════════════════════════════════════════════════════
    Landing "/" — FarmTown-class marketing gate.
@@ -113,6 +114,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
   const [scrolled, setScrolled] = useState(false);
 
   const roundDays = 2;
+  const round = useRound();
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 12);
@@ -239,10 +241,10 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div><b>100k</b><span>$PONSFARM to play</span></div>
           </div>
 
-          {/* pool status — timer hidden until launch */}
+          {/* pool status — live countdown to the round boundary (21:00 WIB) */}
           <div className="round-strip" role="status">
-            <span className="rs-k">FARMER'S POOL</span>
-            <span className="rs-c">opens soon</span>
+            <span className="rs-k">ROUND {round.index} ENDS IN</span>
+            <span className={`rs-c ${round.ending ? "urgent" : ""}`}>{round.label}</span>
             <span className="rs-l">10,000 PONS · every 2-day round</span>
           </div>
         </div>
@@ -308,8 +310,8 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             else in the round. No inflation, no printing.
           </p>
           <div className="round-banner">
-            <span className="rb-k">FARMER'S POOL</span>
-            <span className="rb-c">opens soon</span>
+            <span className="rb-k">ROUND {round.index} ENDS IN</span>
+            <span className={`rb-c ${round.ending ? "urgent" : ""}`}>{round.label}</span>
           </div>
           <ul className="rew-list">
             <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PONSFARM to enter</li>
