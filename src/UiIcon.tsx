@@ -25,7 +25,7 @@ export function CoinGold({ size = 16, ...p }: IP) {
   );
 }
 
-/* filled token — the $PHRVT reward coin: green sprout on gold */
+/* filled token — the $PONSFARM reward coin: green sprout on gold */
 export function TokenLeaf({ size = 16, ...p }: IP) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden {...p}>
@@ -103,6 +103,16 @@ export const UI = {
   exit: ({ size = 18, ...p }: IP) => (
     <svg {...base(size)} {...p}>
       <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" /><path d="M10 12H3" /><path d="M6 8l-4 4 4 4" />
+    </svg>
+  ),
+  sound: ({ size = 18, ...p }: IP) => (
+    <svg {...base(size)} {...p}>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16 9a3 3 0 0 1 0 6" /><path d="M18.5 7a6 6 0 0 1 0 10" />
+    </svg>
+  ),
+  muted: ({ size = 18, ...p }: IP) => (
+    <svg {...base(size)} {...p}>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16 10l5 4M21 10l-5 4" />
     </svg>
   ),
 };

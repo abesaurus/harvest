@@ -30,32 +30,32 @@ export type CropDef = {
 
 export const CROPS: Record<CropKind, CropDef> = {
   turnip: {
-    name: "Turnip", seedCost: 8, sell: 18, xp: 12, growMs: 20_000, witherMs: 180_000, minLevel: 1,
+    name: "Turnip", seedCost: 8, sell: 18, xp: 12, growMs: 30_000, witherMs: 300_000, minLevel: 1,
     icon: "🥬",
     art: { stem: "#4fa843", leaf: "#67c257", fruit: "#f0f4e8", fruitHi: "#ffffff", shape: "turnip" },
   },
   potato: {
-    name: "Potato", seedCost: 14, sell: 34, xp: 20, growMs: 35_000, witherMs: 240_000, minLevel: 2,
+    name: "Potato", seedCost: 14, sell: 34, xp: 20, growMs: 120_000, witherMs: 420_000, minLevel: 2,
     icon: "🥔",
     art: { stem: "#43903a", leaf: "#5cb04d", fruit: "#c79a5b", fruitHi: "#e0bb84", shape: "potato" },
   },
   tomato: {
-    name: "Tomato", seedCost: 22, sell: 58, xp: 32, growMs: 55_000, witherMs: 240_000, minLevel: 4,
+    name: "Tomato", seedCost: 22, sell: 58, xp: 32, growMs: 300_000, witherMs: 600_000, minLevel: 4,
     icon: "🍅",
     art: { stem: "#3f8f36", leaf: "#57b84a", fruit: "#e0483c", fruitHi: "#ff7565", shape: "tomato" },
   },
   corn: {
-    name: "Corn", seedCost: 34, sell: 92, xp: 48, growMs: 80_000, witherMs: 300_000, minLevel: 7,
+    name: "Corn", seedCost: 34, sell: 92, xp: 48, growMs: 600_000, witherMs: 900_000, minLevel: 7,
     icon: "🌽",
     art: { stem: "#4a9a3c", leaf: "#63bd52", fruit: "#ffd23d", fruitHi: "#fff08a", shape: "corn" },
   },
   strawberry: {
-    name: "Strawberry", seedCost: 48, sell: 138, xp: 66, growMs: 110_000, witherMs: 300_000, minLevel: 11,
+    name: "Strawberry", seedCost: 48, sell: 138, xp: 66, growMs: 1_200_000, witherMs: 1_800_000, minLevel: 11,
     icon: "🍓",
     art: { stem: "#3f8f36", leaf: "#57b84a", fruit: "#e8354f", fruitHi: "#ff7088", shape: "strawberry" },
   },
   pumpkin: {
-    name: "Pumpkin", seedCost: 70, sell: 215, xp: 95, growMs: 150_000, witherMs: 360_000, minLevel: 16,
+    name: "Pumpkin", seedCost: 70, sell: 215, xp: 95, growMs: 1_800_000, witherMs: 2_700_000, minLevel: 16,
     icon: "🎃",
     art: { stem: "#4a8f36", leaf: "#63b84a", fruit: "#e8802a", fruitHi: "#ffab5c", shape: "pumpkin" },
   },
@@ -131,4 +131,13 @@ export const DAILY_POOL = 10_000; // PONS paid out each 2-day round
 
 export function shortAddr(a: string) {
   return a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;
+}
+
+/** Human-readable grow time, e.g. 30_000 → "30s", 120_000 → "2m", 1_800_000 → "30m". */
+export function fmtGrow(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem ? `${m}m ${rem}s` : `${m}m`;
 }

@@ -28,3 +28,10 @@ pk.txt
 .idea
 .DS_Store
 *.sw?
+
+# video promo (X) — artifacts & personal images
+video-material/
+video-output/
+video-script.txt
+public/user-banner.jpg
+public/user-square.jpg

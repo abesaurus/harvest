@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectWallet, useGame, disconnect } from "./store";
 import PixelIcon from "./PixelIcon";
 import type { HoldInfo } from "./wallet";
-import { PHRVT_TOKEN, RH_EXPLORER, GATE_LIVE, roundInfo, fmtCountdown } from "./wallet";
+import { PONSFARM_TOKEN, RH_EXPLORER, GATE_LIVE, roundInfo, fmtCountdown } from "./wallet";
 import CopyCA from "./CopyCA";
 
 /* ═══════════════════════════════════════════════════════════
@@ -13,10 +13,10 @@ import CopyCA from "./CopyCA";
    Regenerate the hero art:  npm run bg -- --time=dusk --seed=11
    ═══════════════════════════════════════════════════════════ */
 
-/* — PonsHarvest logo mark: a bold "P" whose counter becomes a
-     green sprout growing out of it (concept #1). Scales cleanly
-     from favicon to hero. currentColor drives the P; the leaves
-     use their own greens. — */
+/* — Ponsfarm logo mark: a chunky pixel-block "P" whose top is crowned
+     by a green sprout — retro pixel-farm feel matching the game art.
+     Scales cleanly from favicon to hero. currentColor drives the P
+     blocks; the leaves use their own greens. — */
 export function Logo({ size = 40 }: { size?: number }) {
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} fill="none" aria-hidden>
@@ -30,18 +30,23 @@ export function Logo({ size = 40 }: { size?: number }) {
           <stop offset="1" stopColor="#67c257" />
         </linearGradient>
       </defs>
-      {/* the P — thick stroke, drawn shorter so the sprout crowns it clearly */}
-      <path
-        d="M15 42 V14 H27 a8.5 8.5 0 0 1 0 17 H15"
-        stroke="currentColor" strokeWidth="6"
-        strokeLinecap="round" strokeLinejoin="round"
-      />
-      {/* sprout stem rising out of the top of the P's stem */}
-      <path d="M15 14 C15 9 15 7 15 6" stroke="url(#ph-stem)" strokeWidth="2.6" strokeLinecap="round" />
+      {/* pixel-block "P" — drawn with crisp rects for an 8-bit look */}
+      <g fill="currentColor" shapeRendering="crispEdges">
+        {/* left spine */}
+        <rect x="12" y="15" width="6" height="27" />
+        {/* top bar */}
+        <rect x="18" y="15" width="12" height="6" />
+        {/* middle bar (bowl bottom) */}
+        <rect x="18" y="26" width="12" height="6" />
+        {/* bowl right edge */}
+        <rect x="30" y="18" width="6" height="9" />
+      </g>
+      {/* sprout stem rising out of the top-left of the P */}
+      <path d="M15 15 C15 9 15 7 15 5" stroke="url(#ph-stem)" strokeWidth="2.6" strokeLinecap="round" />
       {/* right leaf */}
-      <path d="M15 8 C18 4 24 4 24 4 C24 4 24 10 20.5 12.5 C18 14 15 12.5 15 12.5 Z" fill="url(#ph-leaf)" />
+      <path d="M15 7 C18 3 24 3 24 3 C24 3 24 9 20.5 11.5 C18 13 15 11.5 15 11.5 Z" fill="url(#ph-leaf)" />
       {/* left leaf */}
-      <path d="M15 10 C12 7 7 8 7 8 C7 8 7.5 13 10.5 14.5 C13 15.8 15 14 15 14 Z" fill="url(#ph-stem)" />
+      <path d="M15 9 C12 6 7 7 7 7 C7 7 7.5 12 10.5 13.5 C13 14.8 15 13 15 13 Z" fill="url(#ph-stem)" />
     </svg>
   );
 }
@@ -100,7 +105,7 @@ const Icon = {
 
 const LOOP = [
   { kind: "till" as const, title: "Till & Plant", body: "Work the soil, sow one of six crops, and start your farm." },
-  { kind: "water" as const, title: "Water", body: "Crops only grow while the soil is wet — tend them to ripen." },
+  { kind: "water" as const, title: "Water", body: "Water each seed once — that's all it takes. The crop grows on its own until ripe." },
   { kind: "harvest" as const, title: "Harvest", body: "Reap ripe crops into your barn before they wither away." },
   { kind: "sell" as const, title: "Sell & Order", body: "Sell produce or fill townsfolk orders for bonus gold + XP." },
   { kind: "earn" as const, title: "Earn PONS", body: "Level up, stake Pool Power, and claim your cut of the 10,000 PONS round pool." },
@@ -108,8 +113,8 @@ const LOOP = [
 
 const FEATURES = [
   { kind: "plant" as const, title: "Plant & grow", body: "Till soil, sow seeds, keep them watered. Six unique crops across 30 levels.", stat: "6 crops" },
-  { kind: "living" as const, title: "A living farm", body: "Crops grow only while watered — real chores, not idle taps. Animals roam.", stat: "Real-time" },
-  { kind: "pool" as const, title: "Farmer's Pool", body: "Hold 100k $PHRVT to enter, stake Pool Power, and claim your cut of 10,000 PONS each round.", stat: "10k PONS / round" },
+  { kind: "living" as const, title: "A living farm", body: "Water once and crops grow in real time — from 30s turnips to 30-min pumpkins. Animals roam.", stat: "Real-time" },
+  { kind: "pool" as const, title: "Farmer's Pool", body: "Hold 100k $PONSFARM to enter, stake Pool Power, and claim your cut of 10,000 PONS each round.", stat: "10k PONS / round" },
 ];
 
 type LandingProps = {
@@ -161,7 +166,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
   const Brand = (
     <a className="nav-brand" href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
       <span className="nav-badge" aria-hidden><Logo size={26} /></span>
-      <span className="nav-name">PONSHARVEST</span>
+      <span className="nav-name">PONSFARM</span>
     </a>
   );
 
@@ -225,8 +230,8 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
                     Enter your farm <Icon.arrow className="btn-ic" aria-hidden />
                   </button>
                 ) : GATE_LIVE ? (
-                  <a className="btn go" href={`${RH_EXPLORER}/token/${PHRVT_TOKEN}`} target="_blank" rel="noreferrer">
-                    Get $PHRVT to play <Icon.arrow className="btn-ic" aria-hidden />
+                  <a className="btn go" href={`${RH_EXPLORER}/token/${PONSFARM_TOKEN}`} target="_blank" rel="noreferrer">
+                    Get $PONSFARM to play <Icon.arrow className="btn-ic" aria-hidden />
                   </a>
                 ) : (
                   <button className="btn go" onClick={onEnter}>
@@ -243,21 +248,21 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
           {game.address && !checking && hold && (
             !GATE_LIVE ? (
               <p className="gate-ok" role="status">
-                <Icon.shield className="note-ic" aria-hidden /> $PHRVT not deployed yet — preview access is open. The 100k hold-gate goes live once the token launches.
+                <Icon.shield className="note-ic" aria-hidden /> $PONSFARM not deployed yet — preview access is open. The 100k hold-gate goes live once the token launches.
               </p>
             ) : hold.ok ? (
               <p className="gate-ok" role="status">
-                <Icon.shield className="note-ic" aria-hidden /> Access granted · holding {fmt(hold.whole)} $PHRVT
+                <Icon.shield className="note-ic" aria-hidden /> Access granted · holding {fmt(hold.whole)} $PONSFARM
               </p>
             ) : (
               <p className="gate-bad" role="alert">
-                Hold at least <b>{fmt(minHold)} $PHRVT</b> to play — you have {fmt(hold.whole)}.
+                Hold at least <b>{fmt(minHold)} $PONSFARM</b> to play — you have {fmt(hold.whole)}.
               </p>
             )
           )}
 
           <p className="hero-note">
-            <Icon.shield className="note-ic" aria-hidden /> Non-custodial · hold {fmt(minHold)} $PHRVT to enter · 10,000 PONS pool every {roundDays}-day round
+            <Icon.shield className="note-ic" aria-hidden /> Non-custodial · hold {fmt(minHold)} $PONSFARM to enter · 10,000 PONS pool every {roundDays}-day round
           </p>
           {err && <p className="hero-err" role="alert">{err}</p>}
 
@@ -265,10 +270,10 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div><b>6</b><span>Crops</span></div>
             <div><b>30</b><span>Levels</span></div>
             <div><b className="grn">10k</b><span>PONS / round</span></div>
-            <div><b>100k</b><span>$PHRVT to play</span></div>
+            <div><b>100k</b><span>$PONSFARM to play</span></div>
           </div>
 
-          {/* round countdown — paused until $PHRVT is deployed */}
+          {/* round countdown — paused until $PONSFARM is deployed */}
           {GATE_LIVE ? (
             <div className="round-strip" role="status">
               <span className="rs-k">ROUND {round.index}</span>
@@ -279,7 +284,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div className="round-strip paused" role="status">
               <span className="rs-k">PRE-LAUNCH</span>
               <span className="rs-c">— : — : —</span>
-              <span className="rs-l">round timer starts when $PHRVT deploys</span>
+              <span className="rs-l">round timer starts when $PONSFARM deploys</span>
             </div>
           )}
         </div>
@@ -340,7 +345,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
           <h2>Farmer's Pool</h2>
           <p>
             A fixed <b>10,000 PONS</b> pool — the official launchpad token — is paid out every
-            <b> {roundDays}-day round</b>, then settled when the timer hits zero. Hold 100k $PHRVT to play,
+            <b> {roundDays}-day round</b>, then settled when the timer hits zero. Hold 100k $PONSFARM to play,
             burn eligible progress for Pool Power; your share scales with your power versus everyone
             else in the round. No inflation, no printing.
           </p>
@@ -356,7 +361,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             </div>
           )}
           <ul className="rew-list">
-            <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PHRVT to enter</li>
+            <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PONSFARM to enter</li>
             <li><Icon.coins className="li-ic" aria-hidden /> 10,000 PONS per {roundDays}-day round — settled at round end</li>
             <li><Icon.trophy className="li-ic" aria-hidden /> Pool Power leaderboard</li>
           </ul>
@@ -367,15 +372,15 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
           ) : hold?.ok ? (
             <button className="btn go" onClick={onEnter}>Enter your farm <Icon.arrow className="btn-ic" aria-hidden /></button>
           ) : GATE_LIVE ? (
-            <a className="btn go" href={`${RH_EXPLORER}/token/${PHRVT_TOKEN}`} target="_blank" rel="noreferrer">
-              Get $PHRVT to play <Icon.arrow className="btn-ic" aria-hidden />
+            <a className="btn go" href={`${RH_EXPLORER}/token/${PONSFARM_TOKEN}`} target="_blank" rel="noreferrer">
+              Get $PONSFARM to play <Icon.arrow className="btn-ic" aria-hidden />
             </a>
           ) : (
             <button className="btn go" onClick={onEnter}>Enter (preview) <Icon.arrow className="btn-ic" aria-hidden /></button>
           )}
           <div className="rew-tokens">
             <CopyCA full label="PONS" />
-            <CopyCA full label="$PHRVT" token={PHRVT_TOKEN} />
+            <CopyCA full label="$PONSFARM" token={PONSFARM_TOKEN} />
           </div>
         </div>
       </section>

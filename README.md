@@ -1,6 +1,6 @@
-# 🌾 PonsHarvest
+# 🌾 Ponsfarm
 
-A cozy on-chain farm game on Robinhood Chain. Plant seeds, grow your farm, level up from 1 → 30, and reach **level 10** to join the reward pool. Your share of the pool scales with your level. Trade levels for **Boost ⚡** to climb the leaderboard.
+A cozy pixel on-chain farm game on Robinhood Chain. Plant seeds, grow your farm, level up from 1 → 30, and reach **level 10** to join the reward pool. Your share of the pool scales with your Pool Power. Hold **100k $PONSFARM** to enter; the pool pays out **10,000 PONS** each round.
 
 ## Stack
 Vite + React + TypeScript.

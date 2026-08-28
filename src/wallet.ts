@@ -12,25 +12,26 @@ export const RH_RPC = "https://rpc.mainnet.chain.robinhood.com";
 export const RH_EXPLORER = "https://rh-scan.com";
 
 /* ── Two separate tokens ──────────────────────────────────────
-   PONS  = the official launchpad token that funds the reward pool
-           (10,000 PONS per round). Already live on-chain.
-   PHRVT = the game's own gate token the team will deploy later.
-           Hold MIN_HOLD of it to enter the farm. CA is unknown
-           until launch, so it stays empty ("TBA") for now and the
-           hold-gate runs in "preview" mode until it's set.
+   PONS      = the official launchpad token that funds the reward pool
+               (10,000 PONS per round). Already live on-chain.
+   PONSFARM  = the game's own gate token the team will deploy later
+               on the Pons launchpad. Hold MIN_HOLD of it to enter the
+               farm. CA is unknown until launch, so it stays empty
+               ("TBA") for now and the hold-gate runs in "preview"
+               mode until it's set.
    ──────────────────────────────────────────────────────────── */
 
 /** Official PONS launchpad token — funds the reward pool. */
 export const PONS_TOKEN = "0x39dBED3a2bd333467115dE45665cC57F813C4571";
 
-/** $PHRVT game gate token — NOT deployed yet. Paste the CA here
+/** $PONSFARM game gate token — NOT deployed yet. Paste the CA here
  *  after launch to switch the 100k hold-gate live. */
-export const PHRVT_TOKEN = ""; // TBA — set to the deployed $PHRVT address
+export const PONSFARM_TOKEN = ""; // TBA — set to the deployed $PONSFARM address
 
-/** True once the $PHRVT gate token has a real address. */
-export const GATE_LIVE = /^0x[0-9a-fA-F]{40}$/.test(PHRVT_TOKEN);
+/** True once the $PONSFARM gate token has a real address. */
+export const GATE_LIVE = /^0x[0-9a-fA-F]{40}$/.test(PONSFARM_TOKEN);
 
-/** Minimum $PHRVT a wallet must hold to enter the farm (at launch). */
+/** Minimum $PONSFARM a wallet must hold to enter the farm (at launch). */
 export const MIN_HOLD = 100_000n;          // whole tokens
 
 /** Reward pool paid out each round (in PONS). */
@@ -147,7 +148,7 @@ let cachedDecimals: number | null = null;
 async function tokenDecimals(eth: Eth | null): Promise<number> {
   if (cachedDecimals != null) return cachedDecimals;
   try {
-    const r = await ethCall(eth, PHRVT_TOKEN, "0x313ce567"); // decimals()
+    const r = await ethCall(eth, PONSFARM_TOKEN, "0x313ce567"); // decimals()
     cachedDecimals = parseInt(r, 16) || 18;
   } catch { cachedDecimals = 18; }
   return cachedDecimals;
@@ -155,19 +156,19 @@ async function tokenDecimals(eth: Eth | null): Promise<number> {
 
 export type HoldInfo = { raw: bigint; whole: bigint; decimals: number; ok: boolean; gateLive: boolean };
 
-/** Read the wallet's $PHRVT balance and whether it meets MIN_HOLD.
+/** Read the wallet's $PONSFARM balance and whether it meets MIN_HOLD.
  *  While the gate token isn't deployed yet (GATE_LIVE=false) we run in
  *  preview mode: connecting is enough to enter, and the balance reads 0. */
 export async function checkHold(_address: string): Promise<HoldInfo> {
   if (!GATE_LIVE) {
-    // $PHRVT not deployed yet — let connected wallets in (preview).
+    // $PONSFARM not deployed yet — let connected wallets in (preview).
     return { raw: 0n, whole: 0n, decimals: 18, ok: true, gateLive: false };
   }
   const eth = getEthereum();
   const dec = await tokenDecimals(eth);
   // balanceOf(address)
   const data = "0x70a08231" + pad32(_address);
-  const r = await ethCall(eth, PHRVT_TOKEN, data);
+  const r = await ethCall(eth, PONSFARM_TOKEN, data);
   const raw = BigInt(r && r !== "0x" ? r : "0x0");
   const whole = raw / (10n ** BigInt(dec));
   return { raw, whole, decimals: dec, ok: whole >= MIN_HOLD, gateLive: true };

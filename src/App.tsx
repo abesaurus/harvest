@@ -35,7 +35,7 @@ export default function App() {
     return off;
   }, []);
 
-  // whenever the connected address changes, verify the $PHRVT hold on-chain
+  // whenever the connected address changes, verify the $PONSFARM hold on-chain
   useEffect(() => {
     let cancelled = false;
     if (!game.address) { setHold(null); return; }

@@ -31,7 +31,7 @@ export type GameState = {
   level: number;
   xp: number;
   gold: number;
-  farmToken: number;      // $PHRVT claimed
+  farmToken: number;      // $PONSFARM claimed
   poolPower: number;      // sacrificed progress
   tool: ToolId;
   sel: CropKind;
@@ -216,8 +216,8 @@ export function setNickname(name: string) {
 }
 
 /* ───────── crop growth model ─────────
-   A crop only accumulates growth while its tile is watered.
-   Water lasts WATER_DECAY_MS then the soil dries and growth pauses. */
+   One watering is enough: a crop keeps growing to maturity after a single
+   watering — you don't have to re-water. Growth still takes the full growMs. */
 
 export function cropProgress(t: Tile, _now: number): number {
   if (!t.crop || !t.plantedAt) return 0;
@@ -225,7 +225,11 @@ export function cropProgress(t: Tile, _now: number): number {
   return Math.min(1, t.grown / total);
 }
 export function isWatered(t: Tile, now: number) {
-  return !!t.wateredAt && now - t.wateredAt < WATER_DECAY_MS;
+  if (!t.wateredAt) return false;
+  // A planted crop stays "watered" for its whole growth after one watering.
+  if (t.crop && t.plantedAt != null) return t.wateredAt >= t.plantedAt;
+  // Empty tilled soil dries out normally.
+  return now - t.wateredAt < WATER_DECAY_MS;
 }
 export function isMature(t: Tile, now: number) { return cropProgress(t, now) >= 1; }
 export function isWithered(t: Tile, now: number) {
@@ -447,7 +451,7 @@ export function sacrificeLevel(levels: number) {
 
 export function claimPool() {
   const { estimate, eligible } = poolStats();
-  if (!GATE_LIVE) return toast("Pool goes live once $PHRVT is deployed", "warn");
+  if (!GATE_LIVE) return toast("Pool goes live once $PONSFARM is deployed", "warn");
   if (!eligible) return toast(`Reach level ${MIN_POOL_LEVEL} first`, "warn");
   if (state.poolPower <= 0) return toast("Add Pool Power first", "warn");
   const amt = Math.floor(estimate * 100) / 100;

@@ -4,6 +4,7 @@ import { Logo } from "./Landing";
 import { UI, CoinGold, TokenLeaf } from "./UiIcon";
 import { MAX_LEVEL } from "./harvest";
 import { roundInfo, fmtCountdown, GATE_LIVE } from "./wallet";
+import { startAmbience } from "./audio";
 
 /* ═══════════════════════════════════════════════════════════
    EnterFlow — the polished "press Play → enter farm" sequence.
@@ -63,7 +64,7 @@ function LoadingBar({
   return (
     <div className="ld-wrap">
       <div className="ld-logo"><Logo size={54} /></div>
-      <div className="ld-title">PONSHARVEST</div>
+      <div className="ld-title">PONSFARM</div>
       <div className="ld-bar"><span style={{ width: `${Math.round(pct * 100)}%` }} /></div>
       <div className="ld-row">
         <span className="ld-step">{steps[stepIdx]}</span>
@@ -175,12 +176,12 @@ export default function EnterFlow({ onDone, onCancel }: { onDone: () => void; on
             ) : (
               <>
                 <span className="efr-k">POOL PRE-LAUNCH</span>
-                <span className="efr-c">starts when $PHRVT deploys</span>
+                <span className="efr-c">starts when $PONSFARM deploys</span>
               </>
             )}
           </div>
 
-          <button className="ef-btn go big" onClick={() => setPhase("warping")}>
+          <button className="ef-btn go big" onClick={() => { startAmbience(); setPhase("warping"); }}>
             Go farm <UI.arrow size={18} />
           </button>
         </div>

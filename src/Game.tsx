@@ -6,11 +6,12 @@ import {
 } from "./store";
 import {
   CROPS, CROP_ORDER, TOOLS, MAX_LEVEL, MIN_POOL_LEVEL, RIVALS,
-  DAILY_POOL, xpForNext, tillableTiles, type ToolId,
+  DAILY_POOL, xpForNext, tillableTiles, fmtGrow, type ToolId,
 } from "./harvest";
 import FarmCanvas from "./FarmCanvas";
 import { UI, ToolIcon, CoinGold, TokenLeaf } from "./UiIcon";
 import { roundInfo, fmtCountdown, GATE_LIVE } from "./wallet";
+import { startAmbience, stopAmbience, toggleMute, isMuted } from "./audio";
 import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
 import { Logo } from "./Landing";
@@ -30,6 +31,13 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
   const [tutStep, setTutStep] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const round = roundInfo(now);
+  const [sndMuted, setSndMuted] = useState(isMuted());
+
+  // ambience: ensure it's running while in the farm, release on unmount
+  useEffect(() => {
+    startAmbience();
+    return () => stopAmbience();
+  }, []);
 
   // round countdown tick (only needed while the Pool panel is open)
   useEffect(() => {
@@ -66,7 +74,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
     { ic: "👋", title: "Welcome to your farm!", body: <>Move with <b>WASD</b> / arrow keys (or the <b>on-screen pad</b> on mobile). Tap a tile to walk there and act. Your progress <b>saves automatically</b> — close the tab and come back anytime.</> },
     { ic: "⛏️", title: "1 · Till the soil", body: <>Pick the <b>Hoe</b> (key <b>1</b>), stand inside the fenced field and press <b>Space</b> (or <b>USE</b>) to turn grass into farmland.</> },
     { ic: "🌱", title: "2 · Sow a seed", body: <>Choose a seed on the belt (you start with <b>Turnips</b>), or press <b>2</b>, then <b>Space</b> on tilled soil to plant it.</> },
-    { ic: "🪣", title: "3 · Water it", body: <>Crops <b>only grow while the soil is wet</b>. Grab the <b>Can</b> (key <b>3</b>) and water often — a droplet marker means it's thirsty.</> },
+    { ic: "🪣", title: "3 · Water it once", body: <>Grab the <b>Can</b> (key <b>3</b>) and water the seed <b>one time</b>. That single watering is enough — the crop will keep growing on its own until it's ripe. A droplet marker means it hasn't been watered yet.</> },
     { ic: "🌾", title: "4 · Harvest & earn", body: <>When the plant <b>sparkles</b>, switch to the <b>Scythe</b> (key <b>4</b>) and reap it. Sell in the <b>Barn</b> or fill <b>Orders</b> for extra gold, then level up to unlock new crops and land.</> },
   ];
 
@@ -77,7 +85,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
       {/* ══════ TOP HUD ══════ */}
       <header className="hud">
         <div className="hud-l">
-          <span className="hud-logo"><Logo size={20} /> PONSHARVEST</span>
+          <span className="hud-logo"><Logo size={20} /> PONSFARM</span>
           <span className="chip gold"><CoinGold size={16} /> {g.gold.toLocaleString()}</span>
           <span className="chip farm"><TokenLeaf size={16} /> {g.farmToken.toFixed(0)} PONS</span>
         </div>
@@ -88,6 +96,9 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
             <b>{xpNeed === Infinity ? "MAX" : `${g.xp}/${xpNeed} XP`}</b>
           </div>
           <span className="chip addr" title={g.address ?? ""}>{g.nickname ? g.nickname : `${g.address?.slice(0, 6)}…${g.address?.slice(-4)}`}</span>
+          <button className="ico" title={sndMuted ? "Unmute ambience" : "Mute ambience"} onClick={() => { startAmbience(); setSndMuted(toggleMute()); }}>
+            {sndMuted ? <UI.muted size={16} /> : <UI.sound size={16} />}
+          </button>
           <button className="ico" title="Help" onClick={() => setPanel("help")}><UI.help size={17} /></button>
           <button className="ico danger" title="Exit" onClick={() => { disconnect(); onLogout(); }}><UI.exit size={16} /></button>
         </div>
@@ -195,7 +206,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                           <b>{d.name}</b>
                           <small>
                             {locked ? `Unlocks at level ${d.minLevel}` :
-                              `grow ${Math.round(d.growMs / 1000)}s · sells ${d.sell}G · +${d.xp}XP`}
+                              `grow ${fmtGrow(d.growMs)} · sells ${d.sell}G · +${d.xp}XP`}
                           </small>
                         </div>
                         <span className="r-own">×{g.seeds[c]}</span>
@@ -281,7 +292,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
 
                 {!GATE_LIVE && (
                   <div className="warnbox soft">
-                    The reward pool activates once <b>$PHRVT</b> is deployed. You can still farm and stack
+                    The reward pool activates once <b>$PONSFARM</b> is deployed. You can still farm and stack
                     Pool Power now — the leaderboard preview below shows what your share <i>would</i> pay.
                   </div>
                 )}
@@ -320,7 +331,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   <button className="mini warn" disabled={g.level - 1 < MIN_POOL_LEVEL} onClick={() => sacrificeLevel(1)}>Burn 1 LV → +120</button>
                 </div>
                 <button className="wide" disabled={!GATE_LIVE || !pool.eligible || g.poolPower <= 0} onClick={claimPool}>
-                  {GATE_LIVE ? `Claim ${pool.estimate.toFixed(1)} PONS` : "Claim opens when $PHRVT is live"}
+                  {GATE_LIVE ? `Claim ${pool.estimate.toFixed(1)} PONS` : "Claim opens when $PONSFARM is live"}
                 </button>
                 <CopyCA label="PONS" />
               </>
@@ -351,7 +362,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 <ol className="steps">
                   <li><b>Till</b> — equip the <b>Hoe</b> (key <b>1</b>), stand on the field and press <b>Space</b>.</li>
                   <li><b>Sow</b> — pick a seed on the belt (or key <b>2</b>), press <b>Space</b> on the tilled soil.</li>
-                  <li><b>Water</b> — <b>Can</b> (key <b>3</b>). Crops <i>only grow while the soil is wet</i>, so re-water often.</li>
+                  <li><b>Water</b> — <b>Can</b> (key <b>3</b>). Water each seed <i>once</i> — that's enough, the crop keeps growing on its own until ripe.</li>
                   <li><b>Harvest</b> — <b>Scythe</b> (key <b>4</b>) when the plant sparkles. Produce goes to the Barn.</li>
                   <li><b>Sell / Deliver</b> — sell in the Barn, or fill <b>Orders</b> for ~45% more gold.</li>
                   <li><b>Level up</b> — XP clears more wild land and unlocks better crops.</li>
