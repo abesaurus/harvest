@@ -11,11 +11,8 @@ export const RH_CHAIN_HEX = "0x1237"; // 4663
 export const RH_RPC = "https://rpc.mainnet.chain.robinhood.com";
 export const RH_EXPLORER = "https://rh-scan.com";
 
-/* ── Pons launchpad — where players buy the $PONSFARM gate token ──
-   GANTI LINK INI kalau halaman token di launchpad sudah ada.
-   Format: https://www.ponsfamily.com/launchpad/<CA>
-   (sekarang masih TBA, jadi arahkan ke halaman launchpad umum dulu) */
-export const PONS_BUY_URL = "https://www.ponsfamily.com/launchpad";
+/* ── Pons launchpad — where players buy the $PONSFARM gate token ── */
+export const PONS_BUY_URL = "https://www.ponsfamily.com/launchpad/0x13498E1f5E41423D985E7284524a344345759176";
 
 /* ── Two separate tokens ──────────────────────────────────────
    PONS      = the official launchpad token that funds the reward pool
@@ -31,9 +28,8 @@ export const PONS_BUY_URL = "https://www.ponsfamily.com/launchpad";
 export const PONS_TOKEN = "0x39dBED3a2bd333467115dE45665cC57F813C4571";
 
 /** $PONSFARM game gate token — the key to enter the farm.
- *  Set to a real CA → GATE_LIVE flips true → the 100k hold-gate
- *  is enforced on-chain via balanceOf. */
-export const PONSFARM_TOKEN = "0xE9bb58664b2eEC09bBbBAe67bcd0643333Dd6D7d";
+ *  Hold-gate enforced on-chain via balanceOf. */
+export const PONSFARM_TOKEN = "0x13498e1f5e41423d985e7284524a344345759176";
 
 /** True once the $PONSFARM gate token has a real address. */
 export const GATE_LIVE = /^0x[0-9a-fA-F]{40}$/.test(PONSFARM_TOKEN);
