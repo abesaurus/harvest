@@ -268,12 +268,20 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div><b>100k</b><span>$PHRVT to play</span></div>
           </div>
 
-          {/* live round countdown */}
-          <div className="round-strip" role="status">
-            <span className="rs-k">ROUND {round.index}</span>
-            <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
-            <span className="rs-l">until payout · 10,000 PONS pool</span>
-          </div>
+          {/* round countdown — paused until $PHRVT is deployed */}
+          {GATE_LIVE ? (
+            <div className="round-strip" role="status">
+              <span className="rs-k">ROUND {round.index}</span>
+              <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
+              <span className="rs-l">until payout · 10,000 PONS pool</span>
+            </div>
+          ) : (
+            <div className="round-strip paused" role="status">
+              <span className="rs-k">PRE-LAUNCH</span>
+              <span className="rs-c">— : — : —</span>
+              <span className="rs-l">round timer starts when $PHRVT deploys</span>
+            </div>
+          )}
         </div>
 
         {/* art panel — the pixel farm scene the user likes, framed */}
@@ -336,10 +344,17 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             burn eligible progress for Pool Power; your share scales with your power versus everyone
             else in the round. No inflation, no printing.
           </p>
-          <div className="round-banner">
-            <span className="rb-k">ROUND {round.index} ENDS IN</span>
-            <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
-          </div>
+          {GATE_LIVE ? (
+            <div className="round-banner">
+              <span className="rb-k">ROUND {round.index} ENDS IN</span>
+              <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+            </div>
+          ) : (
+            <div className="round-banner paused">
+              <span className="rb-k">POOL NOT LIVE YET</span>
+              <span className="rb-c">— : — : —</span>
+            </div>
+          )}
           <ul className="rew-list">
             <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PHRVT to enter</li>
             <li><Icon.coins className="li-ic" aria-hidden /> 10,000 PONS per {roundDays}-day round — settled at round end</li>

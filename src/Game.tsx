@@ -10,7 +10,7 @@ import {
 } from "./harvest";
 import FarmCanvas from "./FarmCanvas";
 import { UI, ToolIcon, CoinGold, TokenLeaf } from "./UiIcon";
-import { roundInfo, fmtCountdown } from "./wallet";
+import { roundInfo, fmtCountdown, GATE_LIVE } from "./wallet";
 import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
 import { Logo } from "./Landing";
@@ -260,28 +260,67 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
               <>
                 <h3><UI.pool size={20} /> Farmer's Pool</h3>
                 <p className="sub">
-                  A fixed <b>{DAILY_POOL.toLocaleString()} PONS</b> pool (the official launchpad token) is shared
-                  each <b>2-day round</b>, then settled when the timer ends. Burn gold or levels for
-                  <b> Pool Power</b> — your share is your power vs everyone else's. No inflation, no printing.
+                  A fixed <b>{DAILY_POOL.toLocaleString()} PONS</b> pool (the official launchpad token) is split
+                  across every farmer each <b>2-day round</b> on a <b>basis rate</b>: your payout =
+                  your Pool Power ÷ the whole board's total power × {DAILY_POOL.toLocaleString()} PONS.
+                  No inflation, no printing.
                 </p>
-                <div className="round-banner sm">
-                  <span className="rb-k">ROUND {round.index} ENDS IN</span>
-                  <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
-                </div>
+
+                {/* round timer — paused until the token is deployed */}
+                {GATE_LIVE ? (
+                  <div className="round-banner sm">
+                    <span className="rb-k">ROUND {round.index} ENDS IN</span>
+                    <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+                  </div>
+                ) : (
+                  <div className="round-banner sm paused">
+                    <span className="rb-k">POOL NOT LIVE YET</span>
+                    <span className="rb-c">— : — : —</span>
+                  </div>
+                )}
+
+                {!GATE_LIVE && (
+                  <div className="warnbox soft">
+                    The reward pool activates once <b>$PHRVT</b> is deployed. You can still farm and stack
+                    Pool Power now — the leaderboard preview below shows what your share <i>would</i> pay.
+                  </div>
+                )}
+
+                {/* basis-rate estimate against the whole leaderboard */}
                 <div className="poolgrid">
                   <div><span>Your power</span><b>{g.poolPower}</b></div>
-                  <div><span>Total power</span><b>{pool.total.toLocaleString()}</b></div>
+                  <div><span>Board total power</span><b>{pool.total.toLocaleString()}</b></div>
                   <div><span>Your share</span><b className="grn">{pool.pct.toFixed(2)}%</b></div>
-                  <div><span>Est. payout</span><b className="grn">{pool.estimate.toFixed(1)} PONS</b></div>
+                  <div><span>Basis rate</span><b>{pool.ratePerPower.toFixed(4)}<i> PONS/pwr</i></b></div>
+                  <div className="span2">
+                    <span>Est. payout this round {GATE_LIVE ? "" : "(preview)"}</span>
+                    <b className="grn big">{pool.estimate.toFixed(2)} PONS</b>
+                  </div>
                 </div>
+
+                {/* mini leaderboard so the player sees where they stand */}
+                <div className="poolboard">
+                  <div className="pb-head"><span>#</span><span>Farmer</span><span>Power</span><span>Est. PONS</span></div>
+                  {[...RIVALS, { name: "You", level: g.level, power: g.poolPower }]
+                    .sort((a, b) => b.power - a.power)
+                    .map((f, i) => (
+                      <div className={`pb-row ${f.name === "You" ? "me" : ""}`} key={f.name + i}>
+                        <span className="pb-k">{i + 1}</span>
+                        <span className="pb-n">{f.name}</span>
+                        <span className="pb-p">{f.power.toLocaleString()}</span>
+                        <span className="pb-e grn">{(f.power * pool.ratePerPower).toFixed(1)}</span>
+                      </div>
+                    ))}
+                </div>
+
                 {!pool.eligible && <div className="warnbox">Reach level {MIN_POOL_LEVEL} to enter the pool. You are level {g.level}.</div>}
                 <div className="btnrow">
                   <button className="mini" disabled={!pool.eligible || g.gold < 100} onClick={() => sacrificeGold(100)}>Burn 100G → +10</button>
                   <button className="mini" disabled={!pool.eligible || g.gold < 500} onClick={() => sacrificeGold(500)}>Burn 500G → +50</button>
                   <button className="mini warn" disabled={g.level - 1 < MIN_POOL_LEVEL} onClick={() => sacrificeLevel(1)}>Burn 1 LV → +120</button>
                 </div>
-                <button className="wide" disabled={!pool.eligible || g.poolPower <= 0} onClick={claimPool}>
-                  Claim {pool.estimate.toFixed(1)} PONS
+                <button className="wide" disabled={!GATE_LIVE || !pool.eligible || g.poolPower <= 0} onClick={claimPool}>
+                  {GATE_LIVE ? `Claim ${pool.estimate.toFixed(1)} PONS` : "Claim opens when $PHRVT is live"}
                 </button>
                 <CopyCA label="PONS" />
               </>

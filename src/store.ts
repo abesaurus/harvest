@@ -185,7 +185,7 @@ export function emitFloat(x: number, y: number, text: string, color: string) {
 
 /* ───────── wallet (real, injected EVM on Robinhood Chain) ───────── */
 
-import { connectInjected, reconnectSilently } from "./wallet";
+import { connectInjected, reconnectSilently, GATE_LIVE } from "./wallet";
 
 /** Connect the real browser wallet. Sets the address on success. */
 export async function connectWallet(): Promise<string> {
@@ -416,7 +416,13 @@ export function poolStats() {
   const rivalPower = RIVALS.reduce((s, r) => s + r.power, 0);
   const total = rivalPower + state.poolPower;
   const pct = total > 0 ? (state.poolPower / total) * 100 : 0;
-  return { rivalPower, total, pct, estimate: (pct / 100) * DAILY_POOL, eligible: state.level >= MIN_POOL_LEVEL };
+  // basis rate: PONS distributed per 1 Pool Power across the whole board
+  const ratePerPower = total > 0 ? DAILY_POOL / total : 0;
+  const estimate = state.poolPower * ratePerPower;
+  return {
+    rivalPower, total, pct, ratePerPower, estimate,
+    eligible: state.level >= MIN_POOL_LEVEL,
+  };
 }
 
 export function sacrificeGold(amount: number) {
@@ -434,6 +440,7 @@ export function sacrificeLevel(levels: number) {
 
 export function claimPool() {
   const { estimate, eligible } = poolStats();
+  if (!GATE_LIVE) return toast("Pool goes live once $PHRVT is deployed", "warn");
   if (!eligible) return toast(`Reach level ${MIN_POOL_LEVEL} first`, "warn");
   if (state.poolPower <= 0) return toast("Add Pool Power first", "warn");
   const amt = Math.floor(estimate * 100) / 100;

@@ -303,7 +303,51 @@ img, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 .round-banner.sm .rb-k { color: var(--grn-d, #2f7a2a); }
 .round-banner.sm .rb-c { color: var(--ink, #2a1e14); font-size: 18px; }
 
+/* paused / pre-launch states (grey, no glow) */
+.round-strip.paused { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); }
+.round-strip.paused .rs-k { color: #c9a24a; }
+.round-strip.paused .rs-c { color: #b9bcc2; }
+.round-banner.paused {
+  background: rgba(120,120,120,.1); border-color: rgba(200,200,200,.28);
+}
+.round-banner.paused .rb-k { color: #d0a24a; }
+.round-banner.paused .rb-c { color: #cfd2d8; }
+.round-banner.sm.paused { background: rgba(61,36,18,.06); border-color: #b79b6a; }
+.round-banner.sm.paused .rb-k { color: #a06f2a; }
+.round-banner.sm.paused .rb-c { color: #7a6a4a; }
+
 .rew-tokens { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 16px; }
+
+/* ── Pool panel: basis-rate grid + mini leaderboard ── */
+.poolgrid .span2 { grid-column: 1 / -1; }
+.poolgrid .span2 b.big { font-size: 20px; }
+.poolgrid b i { font-style: normal; font-size: 9px; color: var(--muted); font-weight: 700; }
+
+.warnbox.soft {
+  background: #fff6e0; border-color: #d9b36a; color: #7a5a1e;
+}
+
+.poolboard {
+  margin: 12px 0 4px; border: 2px solid #a9713c; border-radius: 6px; overflow: hidden;
+  background: rgba(61,36,18,.05);
+}
+.pb-head, .pb-row {
+  display: grid; grid-template-columns: 28px 1fr 64px 66px; align-items: center; gap: 8px;
+  padding: 6px 10px; font-size: 12px;
+}
+.pb-head {
+  background: rgba(61,36,18,.14); font-family: var(--pixfont); font-size: 8.5px;
+  color: var(--ink-2); letter-spacing: .3px;
+}
+.pb-head span:nth-child(3), .pb-head span:nth-child(4),
+.pb-row .pb-p, .pb-row .pb-e { text-align: right; }
+.pb-row + .pb-row, .pb-head + .pb-row { border-top: 1px solid rgba(169,113,60,.25); }
+.pb-row .pb-k { font-weight: 900; color: var(--muted); text-align: center; }
+.pb-row .pb-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.pb-row .pb-p { font-weight: 800; }
+.pb-row .pb-e { font-weight: 900; }
+.pb-row.me { background: #eaffe2; }
+.pb-row.me .pb-n { color: var(--grn-d); font-weight: 900; }
 .addr {
   display: inline-flex; align-items: center; gap: 8px;
   background: rgba(255,243,214,.08); border: 1px solid rgba(255,240,200,.28);
