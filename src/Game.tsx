@@ -277,7 +277,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   No inflation, no printing.
                 </p>
 
-                {/* round timer — anchored to 08:00 WIB boundaries */}
+                {/* round timer — anchored to 09:00 WIB boundaries */}
                 <div className="round-banner sm">
                   <span className="rb-k">ROUND {round.index} ENDS IN</span>
                   <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
