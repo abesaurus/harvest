@@ -247,7 +247,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div><b>100k</b><span>$PONSFARM to play</span></div>
           </div>
 
-          {/* round countdown — anchored to 09:00 WIB boundaries */}
+          {/* round countdown — anchored to 21:00 WIB (9 PM) boundaries */}
           <div className="round-strip" role="status">
             <span className="rs-k">ROUND {round.index}</span>
             <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
