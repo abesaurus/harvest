@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectWallet, useGame, disconnect } from "./store";
 import PixelIcon from "./PixelIcon";
 import type { HoldInfo } from "./wallet";
-import { PONSFARM_TOKEN, RH_EXPLORER, GATE_LIVE, roundInfo, fmtCountdown } from "./wallet";
+import { PONSFARM_TOKEN, PONS_BUY_URL, GATE_LIVE, roundInfo, fmtCountdown } from "./wallet";
 import CopyCA from "./CopyCA";
 
 /* ═══════════════════════════════════════════════════════════
@@ -209,14 +209,17 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
                     Enter your farm <Icon.arrow className="btn-ic" aria-hidden />
                   </button>
                 ) : GATE_LIVE ? (
-                  <a className="btn go" href={`${RH_EXPLORER}/token/${PONSFARM_TOKEN}`} target="_blank" rel="noreferrer">
-                    Get $PONSFARM to play <Icon.arrow className="btn-ic" aria-hidden />
+                  <a className="btn go" href={PONS_BUY_URL} target="_blank" rel="noreferrer">
+                    Buy on Pons <Icon.arrow className="btn-ic" aria-hidden />
                   </a>
                 ) : (
                   <button className="btn go" onClick={onEnter}>
                     Enter (preview) <Icon.arrow className="btn-ic" aria-hidden />
                   </button>
                 )}
+                <a className="btn ghost" href={PONS_BUY_URL} target="_blank" rel="noreferrer" title="Buy $PONSFARM on the Pons launchpad">
+                  <Icon.coins className="btn-ic" aria-hidden /> Buy on Pons
+                </a>
                 <div className="addr"><span className="dot" aria-hidden /> {short}</div>
                 <button className="btn ghost sm" onClick={() => disconnect()}>Disconnect</button>
               </>
@@ -351,12 +354,17 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
           ) : hold?.ok ? (
             <button className="btn go" onClick={onEnter}>Enter your farm <Icon.arrow className="btn-ic" aria-hidden /></button>
           ) : GATE_LIVE ? (
-            <a className="btn go" href={`${RH_EXPLORER}/token/${PONSFARM_TOKEN}`} target="_blank" rel="noreferrer">
-              Get $PONSFARM to play <Icon.arrow className="btn-ic" aria-hidden />
+            <a className="btn go" href={PONS_BUY_URL} target="_blank" rel="noreferrer">
+              Buy on Pons <Icon.arrow className="btn-ic" aria-hidden />
             </a>
           ) : (
             <button className="btn go" onClick={onEnter}>Enter (preview) <Icon.arrow className="btn-ic" aria-hidden /></button>
           )}
+          <div className="btnrow">
+            <a className="btn ghost" href={PONS_BUY_URL} target="_blank" rel="noreferrer" title="Buy $PONSFARM on the Pons launchpad">
+              <Icon.coins className="btn-ic" aria-hidden /> Buy on Pons
+            </a>
+          </div>
           <div className="rew-tokens">
             <CopyCA full label="PONS" />
             <CopyCA full label="$PONSFARM" token={PONSFARM_TOKEN} />

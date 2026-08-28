@@ -11,6 +11,12 @@ export const RH_CHAIN_HEX = "0x1237"; // 4663
 export const RH_RPC = "https://rpc.mainnet.chain.robinhood.com";
 export const RH_EXPLORER = "https://rh-scan.com";
 
+/* ── Pons launchpad — where players buy the $PONSFARM gate token ──
+   GANTI LINK INI kalau halaman token di launchpad sudah ada.
+   Format: https://www.ponsfamily.com/launchpad/<CA>
+   (sekarang masih TBA, jadi arahkan ke halaman launchpad umum dulu) */
+export const PONS_BUY_URL = "https://www.ponsfamily.com/launchpad";
+
 /* ── Two separate tokens ──────────────────────────────────────
    PONS      = the official launchpad token that funds the reward pool
                (10,000 PONS per round). Already live on-chain.
