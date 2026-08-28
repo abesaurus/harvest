@@ -234,7 +234,7 @@ export function drawTool(
 
 export type CropArt = {
   stem: string; leaf: string; fruit: string; fruitHi: string;
-  shape: "berry" | "cob" | "root" | "leafy" | "vine";
+  shape: "turnip" | "potato" | "tomato" | "corn" | "strawberry" | "pumpkin";
 };
 
 export function drawCropSprite(
@@ -245,75 +245,193 @@ export function drawCropSprite(
   const cx = x + 8, base = y + 13;
   const s = wither ? "#8a7a56" : art.stem;
   const l = wither ? "#9c8c60" : art.leaf;
+  const l2 = wither ? "#8a7a4e" : shade(art.leaf, -18);
+  const f = wither ? "#8a7a56" : art.fruit;
+  const fh = wither ? "#9c8c60" : art.fruitHi;
+  const fd = wither ? "#6f6244" : shade(art.fruit, -22);
   const sw = Math.round(sway); // -1..1 pixel sway
 
+  /* ── stage 0: freshly sown — seed specks in the furrow (same for all) ── */
   if (stage === 0) {
-    // freshly sown: two seed specks in the furrow
     g.fillStyle = wither ? "#7a6a48" : "#c7a45f";
     g.fillRect(cx - 2, base + 1, 2, 1);
     g.fillRect(cx + 1, base, 2, 1);
     return;
   }
+
+  /* ── stage 1: sprout — small hint of the plant's future silhouette ── */
   if (stage === 1) {
-    // sprout: short stem + 2 leaves
     g.fillStyle = s;
     g.fillRect(cx, base - 3, 1, 4);
     g.fillStyle = l;
-    g.fillRect(cx - 2 + sw, base - 4, 2, 1);
-    g.fillRect(cx + 1 + sw, base - 4, 2, 1);
+    if (art.shape === "corn") {
+      // tall single blade
+      g.fillRect(cx - 1 + sw, base - 5, 1, 3);
+      g.fillRect(cx + 1 + sw, base - 4, 1, 2);
+    } else {
+      g.fillRect(cx - 2 + sw, base - 4, 2, 1);
+      g.fillRect(cx + 1 + sw, base - 4, 2, 1);
+    }
     return;
   }
-  // stage 2 / 3: full plant
-  const h = stage === 3 ? 9 : 6;
-  g.fillStyle = s;
-  g.fillRect(cx, base - h, 1, h + 1);
-  g.fillStyle = l;
-  // leaf pairs up the stem
-  for (let i = 2; i < h; i += 3) {
-    g.fillRect(cx - 3 + sw, base - i, 3, 1);
-    g.fillRect(cx + 1 + sw, base - i - 1, 3, 1);
-  }
-  if (stage < 3) return;
 
-  const f = wither ? "#8a7a56" : art.fruit;
-  const fh = wither ? "#9c8c60" : art.fruitHi;
-  g.fillStyle = f;
+  /* ── stage 2 & 3: full plant, unique per crop ── */
+  const ripe = stage === 3;
+
   switch (art.shape) {
-    case "berry":
-      g.fillRect(cx - 3 + sw, base - h - 1, 3, 3);
-      g.fillRect(cx + 1 + sw, base - h + 1, 3, 3);
-      g.fillStyle = fh;
-      g.fillRect(cx - 3 + sw, base - h - 1, 1, 1);
-      g.fillRect(cx + 1 + sw, base - h + 1, 1, 1);
+    /* TURNIP — leafy rosette on top, round pale bulb pushing out of the soil */
+    case "turnip": {
+      // leaves fan out
+      g.fillStyle = l;
+      g.fillRect(cx - 4 + sw, base - 6, 2, 4);
+      g.fillRect(cx - 1 + sw, base - 8, 2, 5);
+      g.fillRect(cx + 2 + sw, base - 6, 2, 4);
+      g.fillStyle = l2;
+      g.fillRect(cx - 2 + sw, base - 7, 1, 4);
+      g.fillRect(cx + 1 + sw, base - 6, 1, 3);
+      if (ripe) {
+        // white-purple bulb at the base
+        g.fillStyle = "#d9c7e8"; g.fillRect(cx - 3, base - 1, 6, 4);
+        g.fillStyle = f; g.fillRect(cx - 2, base, 4, 3);
+        g.fillStyle = fh; g.fillRect(cx - 2, base, 2, 1);
+      }
       break;
-    case "cob":
-      g.fillRect(cx - 2 + sw, base - h - 2, 4, 7);
-      g.fillStyle = fh;
-      g.fillRect(cx - 2 + sw, base - h - 2, 1, 7);
-      g.fillStyle = art.leaf;
-      g.fillRect(cx + 2 + sw, base - h - 1, 1, 6);
+    }
+
+    /* POTATO — bushy low mound of foliage; tubers shown as bumps at soil line */
+    case "potato": {
+      g.fillStyle = l;
+      g.fillRect(cx - 4 + sw, base - 4, 9, 4);
+      g.fillRect(cx - 3 + sw, base - 6, 7, 2);
+      g.fillStyle = l2;
+      g.fillRect(cx - 2 + sw, base - 7, 4, 1);
+      g.fillRect(cx - 4 + sw, base - 2, 2, 2);
+      g.fillRect(cx + 3 + sw, base - 3, 2, 2);
+      // tiny yellow-white flowers when mature
+      if (ripe) {
+        g.fillStyle = "#f4e9c0"; g.fillRect(cx - 1 + sw, base - 7, 1, 1); g.fillRect(cx + 2 + sw, base - 6, 1, 1);
+        // tubers poking out
+        g.fillStyle = f; g.fillRect(cx - 3, base + 1, 3, 2); g.fillRect(cx + 1, base + 1, 3, 2);
+        g.fillStyle = fh; g.fillRect(cx - 3, base + 1, 1, 1); g.fillRect(cx + 1, base + 1, 1, 1);
+      }
       break;
-    case "root":
-      g.fillRect(cx - 3 + sw, base - 1, 7, 3);
-      g.fillStyle = fh;
-      g.fillRect(cx - 2 + sw, base - 1, 2, 1);
-      g.fillStyle = art.leaf;
-      g.fillRect(cx - 2 + sw, base - h - 1, 5, 2);
+    }
+
+    /* TOMATO — tall staked vine, round red fruits hanging in clusters */
+    case "tomato": {
+      const h = ripe ? 10 : 7;
+      g.fillStyle = s;
+      g.fillRect(cx, base - h, 1, h + 1);
+      g.fillStyle = l;
+      for (let i = 2; i < h; i += 3) {
+        g.fillRect(cx - 3 + sw, base - i, 3, 1);
+        g.fillRect(cx + 1 + sw, base - i - 1, 3, 1);
+      }
+      if (ripe) {
+        // clustered round tomatoes
+        g.fillStyle = f;
+        g.fillRect(cx - 3 + sw, base - h + 3, 2, 2);
+        g.fillRect(cx + 2 + sw, base - h + 5, 2, 2);
+        g.fillRect(cx - 1 + sw, base - h + 7, 2, 2);
+        g.fillStyle = fh;
+        g.fillRect(cx - 3 + sw, base - h + 3, 1, 1);
+        g.fillRect(cx + 2 + sw, base - h + 5, 1, 1);
+        g.fillRect(cx - 1 + sw, base - h + 7, 1, 1);
+      }
       break;
-    case "leafy":
-      g.fillRect(cx - 4 + sw, base - h - 1, 9, 5);
-      g.fillStyle = fh;
-      g.fillRect(cx - 3 + sw, base - h, 3, 2);
+    }
+
+    /* CORN — very tall stalk with long arching leaves + a golden cob */
+    case "corn": {
+      const h = ripe ? 13 : 9;
+      g.fillStyle = s;
+      g.fillRect(cx, base - h, 1, h + 1);
+      // long arching blades
+      g.fillStyle = l;
+      g.fillRect(cx - 4 + sw, base - h + 2, 4, 1);
+      g.fillRect(cx + 1 + sw, base - h + 4, 4, 1);
+      g.fillRect(cx - 4 + sw, base - h + 6, 4, 1);
+      g.fillStyle = l2;
+      g.fillRect(cx - 5 + sw, base - h + 3, 2, 1);
+      g.fillRect(cx + 4 + sw, base - h + 5, 2, 1);
+      if (ripe) {
+        // golden cob hugging the stalk
+        g.fillStyle = f; g.fillRect(cx + 1 + sw, base - h + 1, 3, 6);
+        g.fillStyle = fh; g.fillRect(cx + 1 + sw, base - h + 1, 1, 6);
+        // silk tuft
+        g.fillStyle = "#e8c060"; g.fillRect(cx + 2 + sw, base - h - 1, 1, 2);
+      }
       break;
-    case "vine":
-      g.fillRect(cx - 4 + sw, base - h + 1, 3, 3);
-      g.fillRect(cx + 2 + sw, base - h - 1, 3, 3);
-      g.fillRect(cx - 1 + sw, base - h + 3, 3, 3);
-      g.fillStyle = fh;
-      g.fillRect(cx - 4 + sw, base - h + 1, 1, 1);
-      g.fillRect(cx + 2 + sw, base - h - 1, 1, 1);
+    }
+
+    /* STRAWBERRY — low leafy clump close to the ground with bright berries */
+    case "strawberry": {
+      g.fillStyle = l;
+      g.fillRect(cx - 4 + sw, base - 4, 3, 3);
+      g.fillRect(cx - 1 + sw, base - 5, 3, 3);
+      g.fillRect(cx + 2 + sw, base - 4, 3, 3);
+      g.fillStyle = l2;
+      g.fillRect(cx - 2 + sw, base - 3, 1, 2);
+      g.fillRect(cx + 2 + sw, base - 3, 1, 2);
+      if (ripe) {
+        // hanging heart-shaped berries
+        g.fillStyle = f;
+        g.fillRect(cx - 3 + sw, base - 1, 2, 3);
+        g.fillRect(cx + 2 + sw, base, 2, 3);
+        g.fillStyle = fd;
+        g.fillRect(cx - 3 + sw, base + 1, 2, 1);
+        g.fillRect(cx + 2 + sw, base + 2, 2, 1);
+        g.fillStyle = fh;
+        g.fillRect(cx - 3 + sw, base - 1, 1, 1);
+        g.fillRect(cx + 2 + sw, base, 1, 1);
+        // seeds
+        g.fillStyle = "#fff3c4";
+        g.fillRect(cx - 2 + sw, base, 1, 1);
+        g.fillRect(cx + 3 + sw, base + 1, 1, 1);
+      }
       break;
+    }
+
+    /* PUMPKIN — sprawling vine with big broad leaves and a fat ribbed gourd */
+    case "pumpkin": {
+      g.fillStyle = l;
+      g.fillRect(cx - 5 + sw, base - 6, 4, 3);
+      g.fillRect(cx + 1 + sw, base - 7, 4, 3);
+      g.fillRect(cx - 2 + sw, base - 8, 4, 2);
+      g.fillStyle = l2;
+      g.fillRect(cx - 4 + sw, base - 5, 2, 1);
+      g.fillRect(cx + 2 + sw, base - 6, 2, 1);
+      if (ripe) {
+        // fat round pumpkin sitting on the soil
+        g.fillStyle = f;
+        g.fillRect(cx - 5, base - 2, 10, 5);
+        g.fillRect(cx - 4, base - 3, 8, 1);
+        g.fillRect(cx - 4, base + 3, 8, 1);
+        g.fillStyle = fd; // ribs
+        g.fillRect(cx - 2, base - 2, 1, 5);
+        g.fillRect(cx + 1, base - 2, 1, 5);
+        g.fillStyle = fh;
+        g.fillRect(cx - 4, base - 2, 2, 1);
+        g.fillStyle = s; // stalk
+        g.fillRect(cx - 1, base - 4, 2, 2);
+      } else {
+        // small green gourd forming
+        g.fillStyle = shade(art.leaf, 8);
+        g.fillRect(cx - 2, base, 5, 3);
+      }
+      break;
+    }
   }
+}
+
+/** Lighten (+) or darken (−) a #rrggbb colour by an amount in 0..255. */
+function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const clamp = (v: number) => Math.max(0, Math.min(255, v));
+  const r = clamp(((n >> 16) & 255) + amt);
+  const gg = clamp(((n >> 8) & 255) + amt);
+  const b = clamp((n & 255) + amt);
+  return `#${((r << 16) | (gg << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -21,10 +21,14 @@ import {
    • 1..5 hotkeys swap tools
    ═══════════════════════════════════════════════════════════ */
 
-const VIEW_W = 300;   // art pixels visible (before upscale)
-const VIEW_H = 190;
+const BASE_W = 300;   // reference art-pixel viewport (used to pick a scale)
+const BASE_H = 190;
 const SPEED = 62;     // art px / second
 const REACH = 26;     // interaction reach in art px
+
+// dynamic viewport (recomputed on resize so the canvas fills its container)
+let VIEW_W = BASE_W;
+let VIEW_H = BASE_H;
 
 type Float = { x: number; y: number; text: string; color: string; born: number };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number };
@@ -159,13 +163,25 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
       bakedLevel = level;
     }
 
-    /* ── canvas sizing: integer upscale, crisp pixels ── */
+    /* ── canvas sizing: fill the container, integer upscale, crisp pixels ── */
     let scale = 3;
     function resize() {
       const parent = canvas.parentElement!;
-      const availW = parent.clientWidth;
-      const availH = Math.max(260, Math.min(window.innerHeight - 210, 620));
-      scale = Math.max(2, Math.min(Math.floor(availW / VIEW_W), Math.floor(availH / VIEW_H)));
+      const availW = Math.max(240, parent.clientWidth);
+      const availH = Math.max(240, parent.clientHeight);
+      // pick the largest integer scale that keeps the reference viewport visible
+      scale = Math.max(2, Math.min(Math.floor(availW / BASE_W), Math.floor(availH / BASE_H)));
+      // derive the actual art-pixel viewport from the real container so the
+      // canvas fills all available space (no letterboxing / fixed frame)
+      VIEW_W = Math.ceil(availW / scale);
+      VIEW_H = Math.ceil(availH / scale);
+      // clamp so we never show more world than exists
+      VIEW_W = Math.min(VIEW_W, worldPx.w);
+      VIEW_H = Math.min(VIEW_H, worldPx.h);
+      // keep the viewport EVEN so the player (locked at VIEW/2) sits on a whole
+      // pixel — an odd viewport parks the sprite on a half-pixel and softens it.
+      VIEW_W -= VIEW_W % 2;
+      VIEW_H -= VIEW_H % 2;
       canvas.width = VIEW_W * scale;
       canvas.height = VIEW_H * scale;
       canvas.style.width = `${VIEW_W * scale}px`;
@@ -180,6 +196,7 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
     /* ── player ── */
     const player = {
       x: 20 * TILE + 8, y: 10 * TILE + 8,
+      px: 20 * TILE + 8, py: 10 * TILE + 8,   // previous sim position (for interpolation)
       dir: "down" as Dir, moving: false, step: 0,
       swing: 0,       // 0 = idle, >0 tool animation running
     };
@@ -286,19 +303,29 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
       if (!solid(player.x - fx, ny + fy) && !solid(player.x + fx, ny + fy)) player.y = ny;
     }
 
-    /* ── loop ── */
-    let raf = 0, last = performance.now(), tGrow = 0;
+    /* ── loop: fixed-timestep sim + interpolated render (kills jitter) ── */
+    let raf = 0, last = performance.now(), acc = 0, tGrow = 0;
+    const STEP = 1 / 60;               // simulate at a rock-steady 60 Hz
     function frame(now: number) {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      let dt = (now - last) / 1000;
       last = now;
-      update(dt, now);
-      render(now);
+      if (dt > 0.25) dt = 0.25;        // clamp after tab-switch to avoid spiral
+      acc += dt;
+      let steps = 0;
+      while (acc >= STEP && steps < 5) { update(STEP); acc -= STEP; steps++; }
+      // fractional progress toward the next sim step — used to interpolate the
+      // player + camera so motion is buttery on any refresh rate (60/120/144Hz).
+      const alpha = acc / STEP;
+      render(now, alpha);
       raf = requestAnimationFrame(frame);
     }
 
-    function update(dt: number, now: number) {
+    function update(dt: number) {
       const st = getState();
       if (bakedLevel !== st.level) bakeGround(st.level);
+
+      // remember where we were so render() can interpolate between sim steps
+      player.px = player.x; player.py = player.y;
 
       tGrow += dt;
       if (tGrow > 0.4) { tickGrowth(Date.now()); tGrow = 0; }
@@ -329,13 +356,10 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
 
       if (player.swing > 0) player.swing = Math.max(0, player.swing - dt * 3.2);
 
-      // camera follow with clamp + slight smoothing
-      const tcx = Math.round(player.x - VIEW_W / 2);
-      const tcy = Math.round(player.y - VIEW_H / 2);
-      cam.x += (tcx - cam.x) * Math.min(1, dt * 9);
-      cam.y += (tcy - cam.y) * Math.min(1, dt * 9);
-      cam.x = Math.max(0, Math.min(worldPx.w - VIEW_W, cam.x));
-      cam.y = Math.max(0, Math.min(worldPx.h - VIEW_H, cam.y));
+      // camera target locks to the player; the actual smoothing/interp happens
+      // at render time (see the alpha-blended cam below) so there's zero jitter.
+      cam.x = Math.max(0, Math.min(worldPx.w - VIEW_W, player.x - VIEW_W / 2));
+      cam.y = Math.max(0, Math.min(worldPx.h - VIEW_H, player.y - VIEW_H / 2));
 
       // particles
       for (let i = parts.length - 1; i >= 0; i--) {
@@ -345,17 +369,32 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
         if (p.life <= 0) parts.splice(i, 1);
       }
       // floats expire
+      const nowMs2 = performance.now();
       for (let i = floats.length - 1; i >= 0; i--)
-        if (now - floats[i].born > 1100) floats.splice(i, 1);
+        if (nowMs2 - floats[i].born > 1100) floats.splice(i, 1);
     }
 
-    function render(now: number) {
+    function render(now: number, alpha = 1) {
       const st = getState();
       const nowMs = Date.now();
-      const camX = Math.round(cam.x), camY = Math.round(cam.y);
+
+      // interpolate the player between the last two sim steps so motion is
+      // perfectly smooth regardless of the display's refresh rate.
+      const ipx = player.px + (player.x - player.px) * alpha;
+      const ipy = player.py + (player.y - player.py) * alpha;
+
+      // camera follows the interpolated player, clamped to the world bounds.
+      const camWorldX = Math.max(0, Math.min(worldPx.w - VIEW_W, ipx - VIEW_W / 2));
+      const camWorldY = Math.max(0, Math.min(worldPx.h - VIEW_H, ipy - VIEW_H / 2));
+
+      // pixel-perfect smooth scroll: integer camera for world math, fractional
+      // remainder applied as a sub-pixel translate so scrolling is buttery.
+      const camX = Math.floor(camWorldX), camY = Math.floor(camWorldY);
+      const fracX = camWorldX - camX, fracY = camWorldY - camY;
 
       ctx.save();
       ctx.scale(scale, scale);
+      ctx.translate(-fracX, -fracY);
       ctx.imageSmoothingEnabled = false;
 
       // ground layer
@@ -363,9 +402,9 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
 
       const sway = Math.sin(now / 620) * 1.2;
 
-      // ── tilled soil + crops (only visible tiles) ──
-      const tx0 = Math.max(0, Math.floor(camX / TILE)), tx1 = Math.min(MAP_W - 1, Math.ceil((camX + VIEW_W) / TILE));
-      const ty0 = Math.max(0, Math.floor(camY / TILE)), ty1 = Math.min(MAP_H - 1, Math.ceil((camY + VIEW_H) / TILE));
+      // ── tilled soil + crops (only visible tiles; +1 margin for sub-pixel scroll) ──
+      const tx0 = Math.max(0, Math.floor(camX / TILE)), tx1 = Math.min(MAP_W - 1, Math.ceil((camX + VIEW_W + 1) / TILE));
+      const ty0 = Math.max(0, Math.floor(camY / TILE)), ty1 = Math.min(MAP_H - 1, Math.ceil((camY + VIEW_H + 1) / TILE));
 
       for (let ty = ty0; ty <= ty1; ty++) {
         for (let tx = tx0; tx <= tx1; tx++) {
@@ -459,8 +498,8 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
       const cwx2 = 8 * TILE + Math.sin(cowT * 0.19 + 2) * 18, cwy2 = 25 * TILE;
       push(cwy2, () => drawCow(ctx, cwx2 - camX, cwy2 - camY, Math.floor(now / 500)));
 
-      // the farmer
-      push(player.y, () => drawPlayer(now));
+      // the farmer (draw at the interpolated position for silky movement)
+      push(ipy, () => drawPlayer(ipx, ipy, camX, camY));
 
       q.sort((a, b) => a.y - b.y);
       for (const d of q) d.fn();
@@ -496,22 +535,23 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
         ctx.globalAlpha = 1;
       }
 
-      /* ── vignette for depth ── */
-      const grd = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      /* ── vignette for depth (oversized by 2px to hide the sub-pixel scroll edge) ── */
+      const grd = ctx.createLinearGradient(0, -1, 0, VIEW_H + 1);
       grd.addColorStop(0, "rgba(0,0,0,0.10)");
       grd.addColorStop(0.35, "rgba(0,0,0,0)");
       grd.addColorStop(1, "rgba(0,0,0,0.13)");
       ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillRect(-2, -2, VIEW_W + 4, VIEW_H + 4);
 
       /* ── mini compass hint on locked land ── */
       ctx.restore();
     }
 
-    function drawPlayer(_now: number) {
-      const camX = Math.round(cam.x), camY = Math.round(cam.y);
-      const sx = Math.round(player.x - camX - 7);
-      const sy = Math.round(player.y - camY - 19);
+    function drawPlayer(ipx: number, ipy: number, camX: number, camY: number) {
+      // use the interpolated world position + the SAME floored camera as render()
+      // so the sub-pixel translate keeps everything aligned and jitter-free.
+      const sx = Math.round((ipx - camX) - 7);
+      const sy = Math.round((ipy - camY) - 19);
       const frame = Math.floor(player.step) % 4;
       const bob = player.moving && (frame === 1 || frame === 3) ? 1 : 0;
 

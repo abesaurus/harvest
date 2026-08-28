@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
+    "typecheck": "tsc -b",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bg": "node scripts/make-bg.mjs",
+    "bg:day": "node scripts/make-bg.mjs --time=day",
+    "bg:dawn": "node scripts/make-bg.mjs --time=dawn",
+    "bg:dusk": "node scripts/make-bg.mjs --time=dusk",
+    "bg:night": "node scripts/make-bg.mjs --time=night"
   },
   "dependencies": {
     "react": "^19.2.8",

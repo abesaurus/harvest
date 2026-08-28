@@ -30,7 +30,7 @@ export type GameState = {
   level: number;
   xp: number;
   gold: number;
-  farmToken: number;      // $FARM claimed
+  farmToken: number;      // $PHRVT claimed
   poolPower: number;      // sacrificed progress
   tool: ToolId;
   sel: CropKind;
@@ -40,6 +40,7 @@ export type GameState = {
   orderSeq: number;
   tiles: Tile[];          // MAP_W * MAP_H
   stats: { planted: number; harvested: number; watered: number; tilled: number };
+  tutorialDone: boolean;  // has the player finished the first-time tutorial
 };
 
 const LS_KEY = "ponsharvest.v3";
@@ -130,6 +131,7 @@ function freshState(): GameState {
     orderSeq: 3,
     tiles: buildMap(),
     stats: { planted: 0, harvested: 0, watered: 0, tilled: 0 },
+    tutorialDone: false,
   };
 }
 
@@ -181,21 +183,30 @@ export function emitFloat(x: number, y: number, text: string, color: string) {
   floatListeners.forEach((l) => l(x, y, text, color));
 }
 
-/* ───────── wallet (mock) ───────── */
+/* ───────── wallet (real, injected EVM on Robinhood Chain) ───────── */
 
-export function connectWallet(): Promise<string> {
-  return new Promise((resolve) => {
-    const c = "0123456789abcdef";
-    let s = ""; for (let i = 0; i < 40; i++) s += c[Math.floor(Math.random() * 16)];
-    setTimeout(() => { const a = "0x" + s; set({ address: a }); resolve(a); }, 500);
-  });
+import { connectInjected, reconnectSilently } from "./wallet";
+
+/** Connect the real browser wallet. Sets the address on success. */
+export async function connectWallet(): Promise<string> {
+  const a = await connectInjected();
+  set({ address: a });
+  return a;
 }
+/** Restore a session silently if the wallet already authorised us. */
+export async function restoreWallet(): Promise<string | null> {
+  const a = await reconnectSilently();
+  if (a) set({ address: a });
+  return a;
+}
+export function setAddress(a: string | null) { set({ address: a }); }
 export function disconnect() { set({ address: null }); }
 
 /* ───────── selection ───────── */
 
 export function setTool(t: ToolId) { set({ tool: t }); }
 export function setSeed(c: CropKind) { set({ sel: c, tool: "seed" }); }
+export function finishTutorial() { if (!state.tutorialDone) set({ tutorialDone: true }); }
 
 /* ───────── crop growth model ─────────
    A crop only accumulates growth while its tile is watered.
@@ -427,7 +438,7 @@ export function claimPool() {
   if (state.poolPower <= 0) return toast("Add Pool Power first", "warn");
   const amt = Math.floor(estimate * 100) / 100;
   set({ farmToken: state.farmToken + amt, poolPower: 0 });
-  toast(`Claimed ${amt} $FARM 🌾`, "ok");
+  toast(`Claimed ${amt} $PHRVT 🌾`, "ok");
 }
 
 export function resetFarm() {
