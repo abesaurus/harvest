@@ -12,7 +12,7 @@ export const RH_RPC = "https://rpc.mainnet.chain.robinhood.com";
 export const RH_EXPLORER = "https://rh-scan.com";
 
 /* ── Pons launchpad — where players buy the $PONSFARM gate token ── */
-export const PONS_BUY_URL = "https://www.ponsfamily.com/launchpad/0x13498E1f5E41423D985E7284524a344345759176";
+export const PONS_BUY_URL = "https://www.ponsfamily.com/launchpad/0xb3d3991221d53A28FCA8f52998b48b50188C8EAC?utm_source=tokenpocket";
 
 /* ── Two separate tokens ──────────────────────────────────────
    PONS      = the official launchpad token that funds the reward pool
@@ -29,7 +29,7 @@ export const PONS_TOKEN = "0x39dBED3a2bd333467115dE45665cC57F813C4571";
 
 /** $PONSFARM game gate token — the key to enter the farm.
  *  Hold-gate enforced on-chain via balanceOf. */
-export const PONSFARM_TOKEN = "0x13498e1f5e41423d985e7284524a344345759176";
+export const PONSFARM_TOKEN = "0xb3d3991221d53a28fca8f52998b48b50188c8eac";
 
 /** True once the $PONSFARM gate token has a real address. */
 export const GATE_LIVE = /^0x[0-9a-fA-F]{40}$/.test(PONSFARM_TOKEN);
