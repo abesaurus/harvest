@@ -3,7 +3,6 @@ import { useGame, setNickname } from "./store";
 import { Logo } from "./Landing";
 import { UI, CoinGold, TokenLeaf } from "./UiIcon";
 import { MAX_LEVEL } from "./harvest";
-import { roundInfo, fmtCountdown } from "./wallet";
 import { startAmbience } from "./audio";
 
 /* ═══════════════════════════════════════════════════════════
@@ -78,15 +77,6 @@ export default function EnterFlow({ onDone, onCancel }: { onDone: () => void; on
   const g = useGame();
   const [phase, setPhase] = useState<Phase>("booting");
   const [name, setName] = useState(g.nickname ?? "");
-  const [now, setNow] = useState(() => Date.now());
-  const round = roundInfo(now);
-
-  // live round countdown on the profile card
-  useEffect(() => {
-    if (phase !== "profile") return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [phase]);
 
   // after the boot bar: new players name their farm, returning players skip ahead
   function afterBoot() {
@@ -168,8 +158,8 @@ export default function EnterFlow({ onDone, onCancel }: { onDone: () => void; on
           </div>
 
           <div className="ef-round">
-            <span className="efr-k">ROUND {round.index} · pool ends in</span>
-            <span className="efr-c">{fmtCountdown(round.remainingMs)}</span>
+            <span className="efr-k">FARMER'S POOL</span>
+            <span className="efr-c">opens soon · 10,000 PONS per round</span>
           </div>
 
           <button className="ef-btn go big" onClick={() => { startAmbience(); setPhase("warping"); }}>

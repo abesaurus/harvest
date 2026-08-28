@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectWallet, useGame, disconnect } from "./store";
 import PixelIcon from "./PixelIcon";
 import type { HoldInfo } from "./wallet";
-import { PONSFARM_TOKEN, PONS_BUY_URL, roundInfo, fmtCountdown } from "./wallet";
+import { PONSFARM_TOKEN, PONS_BUY_URL } from "./wallet";
 import CopyCA from "./CopyCA";
 
 /* ═══════════════════════════════════════════════════════════
@@ -111,22 +111,14 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
 
   const roundDays = 2;
-  const round = roundInfo(now);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 12);
     h();
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
-  }, []);
-
-  // tick the round countdown once per second
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
   }, []);
 
   async function connect() {
@@ -247,11 +239,11 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div><b>100k</b><span>$PONSFARM to play</span></div>
           </div>
 
-          {/* round countdown — anchored to 21:00 WIB (9 PM) boundaries */}
+          {/* pool status — timer hidden until launch */}
           <div className="round-strip" role="status">
-            <span className="rs-k">ROUND {round.index}</span>
-            <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
-            <span className="rs-l">until payout · 10,000 PONS pool</span>
+            <span className="rs-k">FARMER'S POOL</span>
+            <span className="rs-c">opens soon</span>
+            <span className="rs-l">10,000 PONS · every 2-day round</span>
           </div>
         </div>
 
@@ -316,8 +308,8 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             else in the round. No inflation, no printing.
           </p>
           <div className="round-banner">
-            <span className="rb-k">ROUND {round.index} ENDS IN</span>
-            <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+            <span className="rb-k">FARMER'S POOL</span>
+            <span className="rb-c">opens soon</span>
           </div>
           <ul className="rew-list">
             <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PONSFARM to enter</li>

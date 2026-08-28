@@ -10,7 +10,6 @@ import {
 } from "./harvest";
 import FarmCanvas from "./FarmCanvas";
 import { UI, ToolIcon, CoinGold, TokenLeaf } from "./UiIcon";
-import { roundInfo, fmtCountdown } from "./wallet";
 import { startAmbience, stopAmbience, toggleMute, isMuted } from "./audio";
 import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
@@ -29,8 +28,6 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
   const [toasts, setToasts] = useState<{ id: number; msg: string; kind: string }[]>([]);
   const [tut, setTut] = useState(!g.tutorialDone);   // show tutorial for new players
   const [tutStep, setTutStep] = useState(0);
-  const [now, setNow] = useState(() => Date.now());
-  const round = roundInfo(now);
   const [sndMuted, setSndMuted] = useState(isMuted());
 
   // ambience: ensure it's running while in the farm, release on unmount
@@ -38,13 +35,6 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
     startAmbience();
     return () => stopAmbience();
   }, []);
-
-  // round countdown tick (only needed while the Pool panel is open)
-  useEffect(() => {
-    if (panel !== "pool") return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [panel]);
 
   useEffect(() => {
     let n = 0;
@@ -277,10 +267,10 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   No inflation, no printing.
                 </p>
 
-                {/* round timer — anchored to 21:00 WIB (9 PM) boundaries */}
+                {/* pool status — timer hidden until launch */}
                 <div className="round-banner sm">
-                  <span className="rb-k">ROUND {round.index} ENDS IN</span>
-                  <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+                  <span className="rb-k">FARMER'S POOL</span>
+                  <span className="rb-c">opens soon</span>
                 </div>
 
                 {/* basis-rate estimate against the whole leaderboard */}
