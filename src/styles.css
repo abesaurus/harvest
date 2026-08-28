@@ -348,6 +348,22 @@ img, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 .pb-row .pb-e { font-weight: 900; }
 .pb-row.me { background: #eaffe2; }
 .pb-row.me .pb-n { color: var(--grn-d); font-weight: 900; }
+
+/* live-board status footer */
+.board-foot {
+  display: flex; align-items: center; gap: 7px;
+  margin: 8px 0 2px; font-size: 10.5px; font-weight: 700; color: var(--muted);
+}
+.board-foot .dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.06);
+}
+.board-foot .dot.on { background: #46b93a; animation: bfpulse 1.8s ease-in-out infinite; }
+.board-foot .dot.off { background: #b8b0a4; }
+@keyframes bfpulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(70,185,58,.55); }
+  50%      { box-shadow: 0 0 0 4px rgba(70,185,58,0); }
+}
 .addr {
   display: inline-flex; align-items: center; gap: 8px;
   background: rgba(255,243,214,.08); border: 1px solid rgba(255,240,200,.28);

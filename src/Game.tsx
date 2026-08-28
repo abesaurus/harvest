@@ -14,6 +14,7 @@ import { startAmbience, stopAmbience, toggleMute, isMuted } from "./audio";
 import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
 import { Logo } from "./Landing";
+import { useBoard } from "./useBoard";
 
 const TOOL_IC: Record<ToolId, (p: { size?: number }) => React.ReactElement> = {
   hoe: ToolIcon.hoe, seed: ToolIcon.seed, can: ToolIcon.can,
@@ -59,6 +60,38 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
   const barnTotal = CROP_ORDER.reduce((s, c) => s + g.barn[c], 0);
   const barnValue = CROP_ORDER.reduce((s, c) => s + g.barn[c] * CROPS[c].sell, 0);
   const pool = poolStats();
+
+  // live board (api.ponsfarm.online) — falls back to local-only when offline
+  const board = useBoard({
+    address: g.address,
+    nickname: g.nickname,
+    level: g.level,
+    power: g.poolPower,
+    gold: g.gold,
+    harvested: g.stats.harvested,
+  });
+
+  // when the board is online, use its real totals instead of the local estimate
+  const boardTotal = board.data ? board.data.totalPower : pool.total;
+  const boardRate = board.data ? board.data.ratePerPower : pool.ratePerPower;
+  const myShare = boardTotal > 0 ? (g.poolPower / boardTotal) * 100 : 0;
+  const myEstimate = g.poolPower * boardRate;
+  const boardPlayers = board.data ? board.data.players : 1;
+
+  // rows for the leaderboard tables — server rows, or just us
+  const localRow = {
+    rank: 1,
+    nickname: g.nickname || "Your Farm",
+    addr: null,
+    level: g.level,
+    power: g.poolPower,
+    estimate: myEstimate,
+    you: true,
+  };
+  const boardRows =
+    board.rows && board.rows.length > 0
+      ? board.rows
+      : [localRow];
 
   const TUT_STEPS = [
     { ic: "👋", title: "Welcome to your farm!", body: <>Move with <b>WASD</b> / arrow keys (or the <b>on-screen pad</b> on mobile). Tap a tile to walk there and act. Your progress <b>saves automatically</b> — close the tab and come back anytime.</> },
@@ -276,28 +309,32 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 {/* basis-rate estimate against the whole leaderboard */}
                 <div className="poolgrid">
                   <div><span>Your power</span><b>{g.poolPower}</b></div>
-                  <div><span>Board total power</span><b>{pool.total.toLocaleString()}</b></div>
-                  <div><span>Your share</span><b className="grn">{pool.pct.toFixed(2)}%</b></div>
-                  <div><span>Basis rate</span><b>{pool.ratePerPower.toFixed(4)}<i> PONS/pwr</i></b></div>
+                  <div><span>Board total power</span><b>{boardTotal.toLocaleString()}</b></div>
+                  <div><span>Your share</span><b className="grn">{myShare.toFixed(2)}%</b></div>
+                  <div><span>Basis rate</span><b>{boardRate.toFixed(4)}<i> PONS/pwr</i></b></div>
                   <div className="span2">
                     <span>Est. payout this round</span>
-                    <b className="grn big">{pool.estimate.toFixed(2)} PONS</b>
+                    <b className="grn big">{myEstimate.toFixed(2)} PONS</b>
                   </div>
                 </div>
 
-                {/* mini leaderboard — real players only (local until backend) */}
+                {/* mini leaderboard — live from api.ponsfarm.online */}
                 <div className="poolboard">
                   <div className="pb-head"><span>#</span><span>Farmer</span><span>Power</span><span>Est. PONS</span></div>
-                  {[({ name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any)]
-                    .sort((a, b) => b.power - a.power)
-                    .map((f: any, i) => (
-                      <div className={`pb-row ${f.you ? "me" : ""}`} key={f.name + i}>
-                        <span className="pb-k">{i + 1}</span>
-                        <span className="pb-n">{f.name}</span>
-                        <span className="pb-p">{f.power.toLocaleString()}</span>
-                        <span className="pb-e grn">{(f.power * pool.ratePerPower).toFixed(1)}</span>
-                      </div>
-                    ))}
+                  {boardRows.slice(0, 8).map((f) => (
+                    <div className={`pb-row ${f.you ? "me" : ""}`} key={(f.addr || f.nickname) + f.rank}>
+                      <span className="pb-k">{f.rank}</span>
+                      <span className="pb-n">{f.nickname}</span>
+                      <span className="pb-p">{f.power.toLocaleString()}</span>
+                      <span className="pb-e grn">{f.estimate.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="board-foot">
+                  <span className={`dot ${board.online ? "on" : "off"}`} />
+                  {board.online
+                    ? <>Live · {boardPlayers.toLocaleString()} farmer{boardPlayers === 1 ? "" : "s"} on the board</>
+                    : <>Offline — showing your farm only</>}
                 </div>
 
                 {!pool.eligible && <div className="warnbox">Reach level {MIN_POOL_LEVEL} to enter the pool. You are level {g.level}.</div>}
@@ -307,7 +344,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   <button className="mini warn" disabled={g.level - 1 < MIN_POOL_LEVEL} onClick={() => sacrificeLevel(1)}>Burn 1 LV → +120</button>
                 </div>
                 <button className="wide" disabled={!pool.eligible || g.poolPower <= 0} onClick={claimPool}>
-                  Claim {pool.estimate.toFixed(1)} PONS
+                  Claim {myEstimate.toFixed(1)} PONS
                 </button>
                 <CopyCA label="PONS" />
               </>
@@ -318,16 +355,20 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 <h3><UI.ranks size={20} /> Top Farms</h3>
                 <p className="sub">Ranked by Pool Power contributed this round.</p>
                 <div className="board">
-                  {[({ name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any)]
-                    .sort((a, b) => b.power - a.power)
-                    .map((f: any, i) => (
-                      <div className={`brow ${f.you ? "me" : ""}`} key={f.name + i}>
-                        <span className={`bk ${i < 3 ? `medal m${i + 1}` : ""}`}>{i + 1}</span>
-                        <span className="bn">{f.name}</span>
-                        <span className="bl">LV {f.level}</span>
-                        <span className="bp">{f.power.toLocaleString()}</span>
-                      </div>
-                    ))}
+                  {boardRows.map((f) => (
+                    <div className={`brow ${f.you ? "me" : ""}`} key={(f.addr || f.nickname) + f.rank}>
+                      <span className={`bk ${f.rank <= 3 ? `medal m${f.rank}` : ""}`}>{f.rank}</span>
+                      <span className="bn">{f.nickname}</span>
+                      <span className="bl">LV {f.level}</span>
+                      <span className="bp">{f.power.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="board-foot">
+                  <span className={`dot ${board.online ? "on" : "off"}`} />
+                  {board.online
+                    ? <>Live · {boardPlayers.toLocaleString()} farmer{boardPlayers === 1 ? "" : "s"} · updates every 15s</>
+                    : <>Board offline — showing your farm only</>}
                 </div>
               </>
             )}
