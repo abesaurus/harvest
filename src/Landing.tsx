@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectWallet, useGame, disconnect } from "./store";
 import PixelIcon from "./PixelIcon";
 import type { HoldInfo } from "./wallet";
-import { PHRVT_TOKEN, RH_EXPLORER } from "./wallet";
+import { PHRVT_TOKEN, RH_EXPLORER, GATE_LIVE, roundInfo, fmtCountdown } from "./wallet";
 import CopyCA from "./CopyCA";
 
 /* ═══════════════════════════════════════════════════════════
@@ -103,13 +103,13 @@ const LOOP = [
   { kind: "water" as const, title: "Water", body: "Crops only grow while the soil is wet — tend them to ripen." },
   { kind: "harvest" as const, title: "Harvest", body: "Reap ripe crops into your barn before they wither away." },
   { kind: "sell" as const, title: "Sell & Order", body: "Sell produce or fill townsfolk orders for bonus gold + XP." },
-  { kind: "earn" as const, title: "Earn $PHRVT", body: "Level up, stake Pool Power, claim a share of the daily 10,000 $PHRVT pool." },
+  { kind: "earn" as const, title: "Earn PONS", body: "Level up, stake Pool Power, and claim your cut of the 10,000 PONS round pool." },
 ];
 
 const FEATURES = [
   { kind: "plant" as const, title: "Plant & grow", body: "Till soil, sow seeds, keep them watered. Six unique crops across 30 levels.", stat: "6 crops" },
   { kind: "living" as const, title: "A living farm", body: "Crops grow only while watered — real chores, not idle taps. Animals roam.", stat: "Real-time" },
-  { kind: "pool" as const, title: "Farmer's Pool", body: "Hold 100k $PHRVT, stake Pool Power, and claim your cut of the daily 10,000 $PHRVT.", stat: "10k $PHRVT / day" },
+  { kind: "pool" as const, title: "Farmer's Pool", body: "Hold 100k $PHRVT to enter, stake Pool Power, and claim your cut of 10,000 PONS each round.", stat: "10k PONS / round" },
 ];
 
 type LandingProps = {
@@ -127,12 +127,22 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  const roundDays = 2;
+  const round = roundInfo(now);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 12);
     h();
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
+  }, []);
+
+  // tick the round countdown once per second
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   async function connect() {
@@ -209,15 +219,19 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             ) : (
               <>
                 {checking ? (
-                  <button className="btn primary" disabled><span className="spin" aria-hidden /> Checking $PHRVT…</button>
+                  <button className="btn primary" disabled><span className="spin" aria-hidden /> Checking access…</button>
                 ) : hold?.ok ? (
                   <button className="btn go" onClick={onEnter}>
                     Enter your farm <Icon.arrow className="btn-ic" aria-hidden />
                   </button>
-                ) : (
+                ) : GATE_LIVE ? (
                   <a className="btn go" href={`${RH_EXPLORER}/token/${PHRVT_TOKEN}`} target="_blank" rel="noreferrer">
                     Get $PHRVT to play <Icon.arrow className="btn-ic" aria-hidden />
                   </a>
+                ) : (
+                  <button className="btn go" onClick={onEnter}>
+                    Enter (preview) <Icon.arrow className="btn-ic" aria-hidden />
+                  </button>
                 )}
                 <div className="addr"><span className="dot" aria-hidden /> {short}</div>
                 <button className="btn ghost sm" onClick={() => disconnect()}>Disconnect</button>
@@ -227,7 +241,11 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
 
           {/* hold-gate status */}
           {game.address && !checking && hold && (
-            hold.ok ? (
+            !GATE_LIVE ? (
+              <p className="gate-ok" role="status">
+                <Icon.shield className="note-ic" aria-hidden /> $PHRVT not deployed yet — preview access is open. The 100k hold-gate goes live once the token launches.
+              </p>
+            ) : hold.ok ? (
               <p className="gate-ok" role="status">
                 <Icon.shield className="note-ic" aria-hidden /> Access granted · holding {fmt(hold.whole)} $PHRVT
               </p>
@@ -239,15 +257,22 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
           )}
 
           <p className="hero-note">
-            <Icon.shield className="note-ic" aria-hidden /> Non-custodial · hold {fmt(minHold)} $PHRVT to enter · daily 10,000 $PHRVT pool
+            <Icon.shield className="note-ic" aria-hidden /> Non-custodial · hold {fmt(minHold)} $PHRVT to enter · 10,000 PONS pool every {roundDays}-day round
           </p>
           {err && <p className="hero-err" role="alert">{err}</p>}
 
           <div className="hero-stats">
             <div><b>6</b><span>Crops</span></div>
             <div><b>30</b><span>Levels</span></div>
-            <div><b className="grn">10k</b><span>$PHRVT / day</span></div>
+            <div><b className="grn">10k</b><span>PONS / round</span></div>
             <div><b>100k</b><span>$PHRVT to play</span></div>
+          </div>
+
+          {/* live round countdown */}
+          <div className="round-strip" role="status">
+            <span className="rs-k">ROUND {round.index}</span>
+            <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
+            <span className="rs-l">until payout · 10,000 PONS pool</span>
           </div>
         </div>
 
@@ -306,13 +331,18 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
           <span className="kicker">REWARDS</span>
           <h2>Farmer's Pool</h2>
           <p>
-            A fixed daily <b>10,000 $PHRVT</b> pool — no unlimited printing. Hold 100k $PHRVT to play,
+            A fixed <b>10,000 PONS</b> pool — the official launchpad token — is paid out every
+            <b> {roundDays}-day round</b>, then settled when the timer hits zero. Hold 100k $PHRVT to play,
             burn eligible progress for Pool Power; your share scales with your power versus everyone
-            else in the round.
+            else in the round. No inflation, no printing.
           </p>
+          <div className="round-banner">
+            <span className="rb-k">ROUND {round.index} ENDS IN</span>
+            <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+          </div>
           <ul className="rew-list">
             <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PHRVT to enter</li>
-            <li><Icon.coins className="li-ic" aria-hidden /> Fixed 10,000 $PHRVT/day — no inflation</li>
+            <li><Icon.coins className="li-ic" aria-hidden /> 10,000 PONS per {roundDays}-day round — settled at round end</li>
             <li><Icon.trophy className="li-ic" aria-hidden /> Pool Power leaderboard</li>
           </ul>
           {!game.address ? (
@@ -321,12 +351,17 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             </button>
           ) : hold?.ok ? (
             <button className="btn go" onClick={onEnter}>Enter your farm <Icon.arrow className="btn-ic" aria-hidden /></button>
-          ) : (
+          ) : GATE_LIVE ? (
             <a className="btn go" href={`${RH_EXPLORER}/token/${PHRVT_TOKEN}`} target="_blank" rel="noreferrer">
               Get $PHRVT to play <Icon.arrow className="btn-ic" aria-hidden />
             </a>
+          ) : (
+            <button className="btn go" onClick={onEnter}>Enter (preview) <Icon.arrow className="btn-ic" aria-hidden /></button>
           )}
-          <CopyCA full label="$PHRVT" />
+          <div className="rew-tokens">
+            <CopyCA full label="PONS" />
+            <CopyCA full label="$PHRVT" token={PHRVT_TOKEN} />
+          </div>
         </div>
       </section>
 

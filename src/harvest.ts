@@ -127,7 +127,7 @@ export const RIVALS: Farmer[] = [
   { name: "0xPea…77", level: 11, power: 190 },
 ];
 
-export const DAILY_POOL = 10_000; // $PHRVT in the daily reward pool
+export const DAILY_POOL = 10_000; // PONS paid out each 2-day round
 
 export function shortAddr(a: string) {
   return a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;

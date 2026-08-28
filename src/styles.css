@@ -263,6 +263,47 @@ img, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 }
 .sheet .ca-copy:hover, .sheet .ca-view:hover { background: #fff; }
 .sheet .ca-copy.ok { border-color: var(--grn-d, #2f7a2a); background: #e6f7d8; color: var(--grn-d, #2f7a2a); }
+.ca-addr.tba { color: #d9b36a; font-style: italic; }
+
+/* ── round countdown (hero strip + rewards banner) ── */
+.round-strip {
+  display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 16px; padding: 8px 14px; border-radius: 10px;
+  background: rgba(141,255,106,.07); border: 1px solid rgba(141,255,106,.25);
+}
+.round-strip .rs-k {
+  font-family: var(--monofont, monospace); font-weight: 800; font-size: 11px;
+  letter-spacing: .5px; color: #b6ff7a;
+}
+.round-strip .rs-c {
+  font-family: var(--monofont, monospace); font-weight: 900; font-size: 15px;
+  color: #fff; font-variant-numeric: tabular-nums;
+}
+.round-strip .rs-l { font-size: 11.5px; color: var(--lp-mut, #9fb59a); }
+
+.round-banner {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin: 4px auto 18px; padding: 12px 18px; max-width: 380px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(141,255,106,.12), rgba(141,255,106,.04));
+  border: 1px solid rgba(141,255,106,.3);
+}
+.round-banner .rb-k {
+  font-family: var(--monofont, monospace); font-weight: 800; font-size: 11px;
+  letter-spacing: .5px; color: #8dff6a;
+}
+.round-banner .rb-c {
+  font-family: var(--monofont, monospace); font-weight: 900; font-size: 22px;
+  color: #fff; font-variant-numeric: tabular-nums;
+}
+/* compact variant for in-game parchment panel */
+.round-banner.sm {
+  margin: 0 0 14px; padding: 8px 12px; max-width: none; justify-content: space-between;
+  background: rgba(61,36,18,.08); border-color: #a9713c;
+}
+.round-banner.sm .rb-k { color: var(--grn-d, #2f7a2a); }
+.round-banner.sm .rb-c { color: var(--ink, #2a1e14); font-size: 18px; }
+
+.rew-tokens { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 16px; }
 .addr {
   display: inline-flex; align-items: center; gap: 8px;
   background: rgba(255,243,214,.08); border: 1px solid rgba(255,240,200,.28);

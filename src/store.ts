@@ -438,7 +438,7 @@ export function claimPool() {
   if (state.poolPower <= 0) return toast("Add Pool Power first", "warn");
   const amt = Math.floor(estimate * 100) / 100;
   set({ farmToken: state.farmToken + amt, poolPower: 0 });
-  toast(`Claimed ${amt} $PHRVT 🌾`, "ok");
+  toast(`Claimed ${amt} PONS 🌾`, "ok");
 }
 
 export function resetFarm() {

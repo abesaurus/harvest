@@ -39,7 +39,7 @@ export default function App() {
     setChecking(true);
     checkHold(game.address)
       .then((h) => { if (!cancelled) setHold(h); })
-      .catch(() => { if (!cancelled) setHold({ raw: 0n, whole: 0n, decimals: 18, ok: false }); })
+      .catch(() => { if (!cancelled) setHold({ raw: 0n, whole: 0n, decimals: 18, ok: false, gateLive: false }); })
       .finally(() => { if (!cancelled) setChecking(false); });
     return () => { cancelled = true; };
   }, [game.address]);

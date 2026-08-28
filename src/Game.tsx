@@ -10,6 +10,7 @@ import {
 } from "./harvest";
 import FarmCanvas from "./FarmCanvas";
 import { UI, ToolIcon, CoinGold, TokenLeaf } from "./UiIcon";
+import { roundInfo, fmtCountdown } from "./wallet";
 import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
 import { Logo } from "./Landing";
@@ -27,6 +28,15 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
   const [toasts, setToasts] = useState<{ id: number; msg: string; kind: string }[]>([]);
   const [tut, setTut] = useState(!g.tutorialDone);   // show tutorial for new players
   const [tutStep, setTutStep] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const round = roundInfo(now);
+
+  // round countdown tick (only needed while the Pool panel is open)
+  useEffect(() => {
+    if (panel !== "pool") return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [panel]);
 
   useEffect(() => {
     let n = 0;
@@ -69,7 +79,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
         <div className="hud-l">
           <span className="hud-logo"><Logo size={20} /> PONSHARVEST</span>
           <span className="chip gold"><CoinGold size={16} /> {g.gold.toLocaleString()}</span>
-          <span className="chip farm"><TokenLeaf size={16} /> {g.farmToken.toFixed(0)} $PHRVT</span>
+          <span className="chip farm"><TokenLeaf size={16} /> {g.farmToken.toFixed(0)} PONS</span>
         </div>
         <div className="hud-r">
           <span className="chip lvl">LV {g.level}<i>/{MAX_LEVEL}</i></span>
@@ -250,14 +260,19 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
               <>
                 <h3><UI.pool size={20} /> Farmer's Pool</h3>
                 <p className="sub">
-                  A fixed <b>{DAILY_POOL.toLocaleString()} $PHRVT</b> daily pool. Burn gold or levels for
+                  A fixed <b>{DAILY_POOL.toLocaleString()} PONS</b> pool (the official launchpad token) is shared
+                  each <b>2-day round</b>, then settled when the timer ends. Burn gold or levels for
                   <b> Pool Power</b> — your share is your power vs everyone else's. No inflation, no printing.
                 </p>
+                <div className="round-banner sm">
+                  <span className="rb-k">ROUND {round.index} ENDS IN</span>
+                  <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+                </div>
                 <div className="poolgrid">
                   <div><span>Your power</span><b>{g.poolPower}</b></div>
                   <div><span>Total power</span><b>{pool.total.toLocaleString()}</b></div>
                   <div><span>Your share</span><b className="grn">{pool.pct.toFixed(2)}%</b></div>
-                  <div><span>Est. payout</span><b className="grn">{pool.estimate.toFixed(1)}</b></div>
+                  <div><span>Est. payout</span><b className="grn">{pool.estimate.toFixed(1)} PONS</b></div>
                 </div>
                 {!pool.eligible && <div className="warnbox">Reach level {MIN_POOL_LEVEL} to enter the pool. You are level {g.level}.</div>}
                 <div className="btnrow">
@@ -266,9 +281,9 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   <button className="mini warn" disabled={g.level - 1 < MIN_POOL_LEVEL} onClick={() => sacrificeLevel(1)}>Burn 1 LV → +120</button>
                 </div>
                 <button className="wide" disabled={!pool.eligible || g.poolPower <= 0} onClick={claimPool}>
-                  Claim {pool.estimate.toFixed(1)} $PHRVT
+                  Claim {pool.estimate.toFixed(1)} PONS
                 </button>
-                <CopyCA />
+                <CopyCA label="PONS" />
               </>
             )}
 
@@ -301,7 +316,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   <li><b>Harvest</b> — <b>Scythe</b> (key <b>4</b>) when the plant sparkles. Produce goes to the Barn.</li>
                   <li><b>Sell / Deliver</b> — sell in the Barn, or fill <b>Orders</b> for ~45% more gold.</li>
                   <li><b>Level up</b> — XP clears more wild land and unlocks better crops.</li>
-                  <li><b>Farmer's Pool</b> — from level {MIN_POOL_LEVEL}, burn gold/levels for Pool Power and claim $PHRVT.</li>
+                  <li><b>Farmer's Pool</b> — from level {MIN_POOL_LEVEL}, burn gold/levels for Pool Power and claim PONS at the end of each 2-day round.</li>
                 </ol>
                 <p className="sub">The <b>Hand</b> (key <b>5</b>) clears weeds for a little gold. Your farm auto-saves — close the tab and come back anytime; your progress and hold-gate are checked on-chain.</p>
                 <CopyCA />

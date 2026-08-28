@@ -11,12 +11,59 @@ export const RH_CHAIN_HEX = "0x1237"; // 4663
 export const RH_RPC = "https://rpc.mainnet.chain.robinhood.com";
 export const RH_EXPLORER = "https://rh-scan.com";
 
-/** $PHRVT token that gates play + funds the reward pool. */
-export const PHRVT_TOKEN = "0x39dBED3a2bd333467115dE45665cC57F813C4571";
-/** Minimum $PHRVT a wallet must hold to enter the farm. */
+/* ── Two separate tokens ──────────────────────────────────────
+   PONS  = the official launchpad token that funds the reward pool
+           (10,000 PONS per round). Already live on-chain.
+   PHRVT = the game's own gate token the team will deploy later.
+           Hold MIN_HOLD of it to enter the farm. CA is unknown
+           until launch, so it stays empty ("TBA") for now and the
+           hold-gate runs in "preview" mode until it's set.
+   ──────────────────────────────────────────────────────────── */
+
+/** Official PONS launchpad token — funds the reward pool. */
+export const PONS_TOKEN = "0x39dBED3a2bd333467115dE45665cC57F813C4571";
+
+/** $PHRVT game gate token — NOT deployed yet. Paste the CA here
+ *  after launch to switch the 100k hold-gate live. */
+export const PHRVT_TOKEN = ""; // TBA — set to the deployed $PHRVT address
+
+/** True once the $PHRVT gate token has a real address. */
+export const GATE_LIVE = /^0x[0-9a-fA-F]{40}$/.test(PHRVT_TOKEN);
+
+/** Minimum $PHRVT a wallet must hold to enter the farm (at launch). */
 export const MIN_HOLD = 100_000n;          // whole tokens
-/** Fixed daily reward pool. */
-export const POOL_REWARD = 10_000;         // $PHRVT
+
+/** Reward pool paid out each round (in PONS). */
+export const POOL_REWARD = 10_000;         // PONS per round
+
+/* ── Round timing: a round runs 2 days, then payouts are settled ── */
+/** Length of one pool round. */
+export const ROUND_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+/** Fixed anchor so every client agrees on round boundaries (UTC). */
+export const ROUND_EPOCH = Date.UTC(2026, 7, 28, 0, 0, 0); // 2026-08-28T00:00Z
+
+export type RoundInfo = { index: number; startsAt: number; endsAt: number; remainingMs: number };
+
+/** Which round we're in and how long until it settles. */
+export function roundInfo(now: number = Date.now()): RoundInfo {
+  const elapsed = Math.max(0, now - ROUND_EPOCH);
+  const index = Math.floor(elapsed / ROUND_MS);
+  const startsAt = ROUND_EPOCH + index * ROUND_MS;
+  const endsAt = startsAt + ROUND_MS;
+  return { index: index + 1, startsAt, endsAt, remainingMs: Math.max(0, endsAt - now) };
+}
+
+/** Format a remaining-ms span as "1d 03h 22m" / "03h 22m 10s". */
+export function fmtCountdown(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (d > 0) return `${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
+  if (h > 0) return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s`;
+  return `${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s`;
+}
 
 type Eth = {
   request: (a: { method: string; params?: any[] }) => Promise<any>;
@@ -106,18 +153,24 @@ async function tokenDecimals(eth: Eth | null): Promise<number> {
   return cachedDecimals;
 }
 
-export type HoldInfo = { raw: bigint; whole: bigint; decimals: number; ok: boolean };
+export type HoldInfo = { raw: bigint; whole: bigint; decimals: number; ok: boolean; gateLive: boolean };
 
-/** Read the wallet's $PHRVT balance and whether it meets MIN_HOLD. */
-export async function checkHold(address: string): Promise<HoldInfo> {
+/** Read the wallet's $PHRVT balance and whether it meets MIN_HOLD.
+ *  While the gate token isn't deployed yet (GATE_LIVE=false) we run in
+ *  preview mode: connecting is enough to enter, and the balance reads 0. */
+export async function checkHold(_address: string): Promise<HoldInfo> {
+  if (!GATE_LIVE) {
+    // $PHRVT not deployed yet — let connected wallets in (preview).
+    return { raw: 0n, whole: 0n, decimals: 18, ok: true, gateLive: false };
+  }
   const eth = getEthereum();
   const dec = await tokenDecimals(eth);
   // balanceOf(address)
-  const data = "0x70a08231" + pad32(address);
+  const data = "0x70a08231" + pad32(_address);
   const r = await ethCall(eth, PHRVT_TOKEN, data);
   const raw = BigInt(r && r !== "0x" ? r : "0x0");
   const whole = raw / (10n ** BigInt(dec));
-  return { raw, whole, decimals: dec, ok: whole >= MIN_HOLD };
+  return { raw, whole, decimals: dec, ok: whole >= MIN_HOLD, gateLive: true };
 }
 
 export function onAccountsChanged(cb: (addr: string | null) => void): () => void {
