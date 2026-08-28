@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import {
   CROPS, CROP_ORDER, MAX_LEVEL, MIN_POOL_LEVEL, MAP_W, MAP_H,
-  FARM_X0, FARM_Y0, WATER_DECAY_MS, DAILY_POOL, RIVALS,
+  FARM_X0, FARM_Y0, WATER_DECAY_MS, DAILY_POOL,
   tillableTiles, xpForNext, rollOrder,
   type CropKind, type ToolId, type Order,
 } from "./harvest";
@@ -424,14 +424,13 @@ function addXp(amount: number, fx?: number, fy?: number) {
 /* ───────── Farmer's Pool ───────── */
 
 export function poolStats() {
-  const rivalPower = RIVALS.reduce((s, r) => s + r.power, 0);
-  const total = rivalPower + state.poolPower;
-  const pct = total > 0 ? (state.poolPower / total) * 100 : 0;
+  const total = state.poolPower;
+  const pct = total > 0 ? 100 : 0;
   // basis rate: PONS distributed per 1 Pool Power across the whole board
   const ratePerPower = total > 0 ? DAILY_POOL / total : 0;
   const estimate = state.poolPower * ratePerPower;
   return {
-    rivalPower, total, pct, ratePerPower, estimate,
+    total, pct, ratePerPower, estimate,
     eligible: state.level >= MIN_POOL_LEVEL,
   };
 }

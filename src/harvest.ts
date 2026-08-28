@@ -112,20 +112,7 @@ export function rollOrder(level: number, seq: number): Order {
   };
 }
 
-/* ───────── rival farmers (leaderboard + pool) ───────── */
-
-export type Farmer = { name: string; level: number; power: number };
-
-export const RIVALS: Farmer[] = [
-  { name: "0xBEE…farm", level: 30, power: 1840 },
-  { name: "sunnyacres", level: 26, power: 1210 },
-  { name: "0xSoy…4a2", level: 24, power: 980 },
-  { name: "hayfever", level: 21, power: 740 },
-  { name: "0xHus…k9", level: 19, power: 610 },
-  { name: "cropgoblin", level: 15, power: 380 },
-  { name: "0xTom…c1", level: 14, power: 310 },
-  { name: "0xPea…77", level: 11, power: 190 },
-];
+/* ───────── pool constants ───────── */
 
 export const DAILY_POOL = 10_000; // PONS paid out each 2-day round
 

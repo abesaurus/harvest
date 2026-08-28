@@ -5,7 +5,7 @@ import {
   onToast, finishTutorial,
 } from "./store";
 import {
-  CROPS, CROP_ORDER, TOOLS, MAX_LEVEL, MIN_POOL_LEVEL, RIVALS,
+  CROPS, CROP_ORDER, TOOLS, MAX_LEVEL, MIN_POOL_LEVEL,
   DAILY_POOL, xpForNext, tillableTiles, fmtGrow, type ToolId,
 } from "./harvest";
 import FarmCanvas from "./FarmCanvas";
@@ -295,10 +295,10 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </div>
 
-                {/* mini leaderboard so the player sees where they stand */}
+                {/* mini leaderboard — real players only (local until backend) */}
                 <div className="poolboard">
                   <div className="pb-head"><span>#</span><span>Farmer</span><span>Power</span><span>Est. PONS</span></div>
-                  {[...RIVALS, { name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any]
+                  {[({ name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any)]
                     .sort((a, b) => b.power - a.power)
                     .map((f: any, i) => (
                       <div className={`pb-row ${f.you ? "me" : ""}`} key={f.name + i}>
@@ -328,7 +328,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 <h3><UI.ranks size={20} /> Top Farms</h3>
                 <p className="sub">Ranked by Pool Power contributed this round.</p>
                 <div className="board">
-                  {[...RIVALS, { name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any]
+                  {[({ name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any)]
                     .sort((a, b) => b.power - a.power)
                     .map((f: any, i) => (
                       <div className={`brow ${f.you ? "me" : ""}`} key={f.name + i}>
