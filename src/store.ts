@@ -27,6 +27,7 @@ export type Tile = {
 
 export type GameState = {
   address: string | null;
+  nickname: string | null;   // player's chosen farm name (new-player onboarding)
   level: number;
   xp: number;
   gold: number;
@@ -119,6 +120,7 @@ function freshState(): GameState {
   const zero = () => CROP_ORDER.reduce((a, c) => ({ ...a, [c]: 0 }), {} as Record<CropKind, number>);
   return {
     address: null,
+    nickname: null,
     level: 1, xp: 0,
     gold: 120,
     farmToken: 0,
@@ -207,6 +209,11 @@ export function disconnect() { set({ address: null }); }
 export function setTool(t: ToolId) { set({ tool: t }); }
 export function setSeed(c: CropKind) { set({ sel: c, tool: "seed" }); }
 export function finishTutorial() { if (!state.tutorialDone) set({ tutorialDone: true }); }
+/** Set the player's farm nickname (new-player onboarding). */
+export function setNickname(name: string) {
+  const clean = name.trim().slice(0, 20);
+  if (clean) set({ nickname: clean });
+}
 
 /* ───────── crop growth model ─────────
    A crop only accumulates growth while its tile is watered.

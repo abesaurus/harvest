@@ -77,6 +77,11 @@ export const UI = {
       <path d="M12 3v8" /><path d="M7 6a8 8 0 1 0 10 0" />
     </svg>
   ),
+  arrow: ({ size = 18, ...p }: IP) => (
+    <svg {...base(size)} {...p}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  ),
   field: ({ size = 16, ...p }: IP) => (
     <svg {...base(size)} {...p}>
       <rect x="3" y="7" width="18" height="12" rx="1.5" /><path d="M3 11h18M3 15h18M9 7v12M15 7v12" />

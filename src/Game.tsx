@@ -87,7 +87,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
             <span style={{ width: `${xpPct}%` }} />
             <b>{xpNeed === Infinity ? "MAX" : `${g.xp}/${xpNeed} XP`}</b>
           </div>
-          <span className="chip addr">{g.address?.slice(0, 6)}…{g.address?.slice(-4)}</span>
+          <span className="chip addr" title={g.address ?? ""}>{g.nickname ? g.nickname : `${g.address?.slice(0, 6)}…${g.address?.slice(-4)}`}</span>
           <button className="ico" title="Help" onClick={() => setPanel("help")}><UI.help size={17} /></button>
           <button className="ico danger" title="Exit" onClick={() => { disconnect(); onLogout(); }}><UI.exit size={16} /></button>
         </div>
@@ -301,10 +301,10 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 {/* mini leaderboard so the player sees where they stand */}
                 <div className="poolboard">
                   <div className="pb-head"><span>#</span><span>Farmer</span><span>Power</span><span>Est. PONS</span></div>
-                  {[...RIVALS, { name: "You", level: g.level, power: g.poolPower }]
+                  {[...RIVALS, { name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any]
                     .sort((a, b) => b.power - a.power)
-                    .map((f, i) => (
-                      <div className={`pb-row ${f.name === "You" ? "me" : ""}`} key={f.name + i}>
+                    .map((f: any, i) => (
+                      <div className={`pb-row ${f.you ? "me" : ""}`} key={f.name + i}>
                         <span className="pb-k">{i + 1}</span>
                         <span className="pb-n">{f.name}</span>
                         <span className="pb-p">{f.power.toLocaleString()}</span>
@@ -331,10 +331,10 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                 <h3><UI.ranks size={20} /> Top Farms</h3>
                 <p className="sub">Ranked by Pool Power contributed this round.</p>
                 <div className="board">
-                  {[...RIVALS, { name: "You", level: g.level, power: g.poolPower }]
+                  {[...RIVALS, { name: g.nickname || "You", level: g.level, power: g.poolPower, you: true } as any]
                     .sort((a, b) => b.power - a.power)
-                    .map((f, i) => (
-                      <div className={`brow ${f.name === "You" ? "me" : ""}`} key={f.name + i}>
+                    .map((f: any, i) => (
+                      <div className={`brow ${f.you ? "me" : ""}`} key={f.name + i}>
                         <span className={`bk ${i < 3 ? `medal m${i + 1}` : ""}`}>{i + 1}</span>
                         <span className="bn">{f.name}</span>
                         <span className="bl">LV {f.level}</span>

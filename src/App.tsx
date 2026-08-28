@@ -4,11 +4,12 @@ import { useRoute, navigate } from "./router";
 import { onAccountsChanged, checkHold, hasWallet, MIN_HOLD, type HoldInfo } from "./wallet";
 import Landing from "./Landing";
 import Game from "./Game";
+import EnterFlow from "./EnterFlow";
 
 /* ═══════════════════════════════════════════════════════════
    Routes
      /      → Landing (connect wallet only, nothing else)
-     /farm  → Game (requires a connected wallet + 100k $PHRVT hold)
+     /farm  → EnterFlow (loading → name → profile → loading) → Game
    Any unknown path redirects to "/".
    ═══════════════════════════════════════════════════════════ */
 
@@ -17,6 +18,8 @@ export default function App() {
   const path = useRoute();
   const [hold, setHold] = useState<HoldInfo | null>(null);
   const [checking, setChecking] = useState(false);
+  // has the enter-flow finished for THIS visit to /farm?
+  const [farmReady, setFarmReady] = useState(false);
 
   const wantsFarm = path === "/farm";
   const connected = !!game.address;
@@ -50,10 +53,24 @@ export default function App() {
     if (!wantsFarm && path !== "/") navigate("/", true);
   }, [wantsFarm, connected, path]);
 
+  // reset the enter-flow whenever we leave /farm, so it replays next time
+  useEffect(() => {
+    if (!wantsFarm) setFarmReady(false);
+  }, [wantsFarm]);
+
   const allowed = connected && hold?.ok;
 
   if (wantsFarm && allowed) {
-    return <Game onLogout={() => navigate("/")} />;
+    // play the branded enter sequence once, then hand off to the game
+    if (!farmReady) {
+      return (
+        <EnterFlow
+          onDone={() => setFarmReady(true)}
+          onCancel={() => navigate("/", true)}
+        />
+      );
+    }
+    return <Game onLogout={() => { setFarmReady(false); navigate("/"); }} />;
   }
 
   // bounce back to landing if they hit /farm without meeting the gate

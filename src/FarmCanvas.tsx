@@ -439,13 +439,53 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
             const prog = cropProgress(t, nowMs);
             const withered = isWithered(t, nowMs);
             const stage: 0 | 1 | 2 | 3 = prog >= 1 ? 3 : prog > 0.6 ? 2 : prog > 0.22 ? 1 : 0;
+            const ready = prog >= 1 && !withered;
+
+            // ── READY-TO-HARVEST aura (drawn BEHIND the crop) ──
+            if (ready) {
+              const cx = X + TILE / 2, cyG = Y + TILE - 2;
+              const puls = 0.5 + 0.5 * Math.sin(now / 320);         // 0..1 breathing
+              // soft golden glow halo behind the plant
+              const gr = ctx.createRadialGradient(cx, Y + 7, 1, cx, Y + 7, 12 + puls * 3);
+              gr.addColorStop(0, `rgba(255,231,120,${0.32 + puls * 0.18})`);
+              gr.addColorStop(1, "rgba(255,231,120,0)");
+              ctx.fillStyle = gr;
+              ctx.fillRect(X - 6, Y - 8, TILE + 12, TILE + 12);
+              // pulsing ring on the soil
+              ctx.strokeStyle = `rgba(255,214,80,${0.5 + puls * 0.4})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.ellipse(cx, cyG, 6 + puls * 2, 2.4 + puls * 0.8, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
             drawCropSprite(ctx, X, Y, CROPS[t.crop].art, stage, withered, sway);
-            if (prog >= 1 && !withered) {
-              // ready sparkle
-              const b = Math.sin(now / 200) > 0 ? 1 : 0;
-              ctx.fillStyle = b ? "#fff8b0" : "#ffe45c";
-              ctx.fillRect(X + 12, Y + 1, 1, 1);
-              ctx.fillRect(X + 3, Y + 3, 1, 1);
+
+            if (ready) {
+              // ── bobbing indicator ABOVE the crop: a bright star + tiny arrow ──
+              const cx = X + TILE / 2;
+              const bob = Math.round(Math.sin(now / 260) * 1.5);     // gentle bounce
+              const topY = Y - 9 + bob;
+              // 4-point sparkle star
+              ctx.fillStyle = "#fff3b0";
+              ctx.fillRect(cx, topY, 1, 5);       // vertical
+              ctx.fillRect(cx - 2, topY + 2, 5, 1); // horizontal
+              ctx.fillStyle = "#ffd23d";
+              ctx.fillRect(cx, topY + 1, 1, 3);
+              ctx.fillRect(cx - 1, topY + 2, 3, 1);
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(cx, topY + 2, 1, 1);   // hot centre
+              // little downward chevron pointing at the plant
+              ctx.fillStyle = "#ffd23d";
+              ctx.fillRect(cx - 1, topY + 6, 3, 1);
+              ctx.fillRect(cx, topY + 7, 1, 1);
+              // twinkles around the crop
+              const tw = Math.sin(now / 180) > 0;
+              ctx.fillStyle = tw ? "#fff8c8" : "#ffe45c";
+              ctx.fillRect(X + 2, Y + 4, 1, 1);
+              ctx.fillRect(X + TILE - 3, Y + 6, 1, 1);
+              ctx.fillStyle = tw ? "#ffe45c" : "#fff8c8";
+              ctx.fillRect(X + TILE - 4, Y + 2, 1, 1);
             } else if (!isWatered(t, nowMs) && !withered) {
               // thirsty marker
               ctx.fillStyle = "rgba(0,0,0,0.35)";
@@ -453,6 +493,14 @@ export default function FarmCanvas({ onOpenPanel }: { onOpenPanel?: (p: string) 
               ctx.fillStyle = "#7fd4f5";
               ctx.fillRect(X + 8, Y - 4, 1, 2);
               ctx.fillRect(X + 7, Y - 2, 3, 1);
+            } else if (withered) {
+              // withered marker — dull cross so it's clearly NOT harvestable
+              ctx.fillStyle = "rgba(120,90,50,0.9)";
+              ctx.fillRect(X + 6, Y - 5, 5, 5);
+              ctx.fillStyle = "#3a2a18";
+              ctx.fillRect(X + 7, Y - 4, 1, 1); ctx.fillRect(X + 9, Y - 4, 1, 1);
+              ctx.fillRect(X + 8, Y - 3, 1, 1);
+              ctx.fillRect(X + 7, Y - 2, 1, 1); ctx.fillRect(X + 9, Y - 2, 1, 1);
             }
           }
         }
