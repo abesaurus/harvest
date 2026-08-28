@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectWallet, useGame, disconnect } from "./store";
 import PixelIcon from "./PixelIcon";
 import type { HoldInfo } from "./wallet";
-import { PONSFARM_TOKEN, PONS_BUY_URL, GATE_LIVE, roundInfo, fmtCountdown } from "./wallet";
+import { PONSFARM_TOKEN, PONS_BUY_URL, roundInfo, fmtCountdown } from "./wallet";
 import CopyCA from "./CopyCA";
 
 /* ═══════════════════════════════════════════════════════════
@@ -208,14 +208,10 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
                   <button className="btn go" onClick={onEnter}>
                     Enter your farm <Icon.arrow className="btn-ic" aria-hidden />
                   </button>
-                ) : GATE_LIVE ? (
+                ) : (
                   <a className="btn go" href={PONS_BUY_URL} target="_blank" rel="noreferrer">
                     Buy on Pons <Icon.arrow className="btn-ic" aria-hidden />
                   </a>
-                ) : (
-                  <button className="btn go" onClick={onEnter}>
-                    Enter (preview) <Icon.arrow className="btn-ic" aria-hidden />
-                  </button>
                 )}
                 <a className="btn ghost" href={PONS_BUY_URL} target="_blank" rel="noreferrer" title="Buy $PONSFARM on the Pons launchpad">
                   <Icon.coins className="btn-ic" aria-hidden /> Buy on Pons
@@ -228,11 +224,7 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
 
           {/* hold-gate status */}
           {game.address && !checking && hold && (
-            !GATE_LIVE ? (
-              <p className="gate-ok" role="status">
-                <Icon.shield className="note-ic" aria-hidden /> $PONSFARM not deployed yet — preview access is open. The 100k hold-gate goes live once the token launches.
-              </p>
-            ) : hold.ok ? (
+            hold.ok ? (
               <p className="gate-ok" role="status">
                 <Icon.shield className="note-ic" aria-hidden /> Access granted · holding {fmt(hold.whole)} $PONSFARM
               </p>
@@ -255,20 +247,12 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             <div><b>100k</b><span>$PONSFARM to play</span></div>
           </div>
 
-          {/* round countdown — paused until $PONSFARM is deployed */}
-          {GATE_LIVE ? (
-            <div className="round-strip" role="status">
-              <span className="rs-k">ROUND {round.index}</span>
-              <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
-              <span className="rs-l">until payout · 10,000 PONS pool</span>
-            </div>
-          ) : (
-            <div className="round-strip paused" role="status">
-              <span className="rs-k">PRE-LAUNCH</span>
-              <span className="rs-c">— : — : —</span>
-              <span className="rs-l">round timer starts when $PONSFARM deploys</span>
-            </div>
-          )}
+          {/* round countdown — anchored to 08:00 WIB boundaries */}
+          <div className="round-strip" role="status">
+            <span className="rs-k">ROUND {round.index}</span>
+            <span className="rs-c">{fmtCountdown(round.remainingMs)}</span>
+            <span className="rs-l">until payout · 10,000 PONS pool</span>
+          </div>
         </div>
 
         {/* art panel — the pixel farm scene the user likes, framed */}
@@ -331,17 +315,10 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             burn eligible progress for Pool Power; your share scales with your power versus everyone
             else in the round. No inflation, no printing.
           </p>
-          {GATE_LIVE ? (
-            <div className="round-banner">
-              <span className="rb-k">ROUND {round.index} ENDS IN</span>
-              <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
-            </div>
-          ) : (
-            <div className="round-banner paused">
-              <span className="rb-k">POOL NOT LIVE YET</span>
-              <span className="rb-c">— : — : —</span>
-            </div>
-          )}
+          <div className="round-banner">
+            <span className="rb-k">ROUND {round.index} ENDS IN</span>
+            <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+          </div>
           <ul className="rew-list">
             <li><Icon.shield className="li-ic" aria-hidden /> Wallet-verified · 100k $PONSFARM to enter</li>
             <li><Icon.coins className="li-ic" aria-hidden /> 10,000 PONS per {roundDays}-day round — settled at round end</li>
@@ -353,12 +330,10 @@ export default function Landing({ onEnter, hold, checking, walletAvailable = tru
             </button>
           ) : hold?.ok ? (
             <button className="btn go" onClick={onEnter}>Enter your farm <Icon.arrow className="btn-ic" aria-hidden /></button>
-          ) : GATE_LIVE ? (
+          ) : (
             <a className="btn go" href={PONS_BUY_URL} target="_blank" rel="noreferrer">
               Buy on Pons <Icon.arrow className="btn-ic" aria-hidden />
             </a>
-          ) : (
-            <button className="btn go" onClick={onEnter}>Enter (preview) <Icon.arrow className="btn-ic" aria-hidden /></button>
           )}
           <div className="btnrow">
             <a className="btn ghost" href={PONS_BUY_URL} target="_blank" rel="noreferrer" title="Buy $PONSFARM on the Pons launchpad">

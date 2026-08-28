@@ -187,7 +187,7 @@ export function emitFloat(x: number, y: number, text: string, color: string) {
 
 /* ───────── wallet (real, injected EVM on Robinhood Chain) ───────── */
 
-import { connectInjected, reconnectSilently, GATE_LIVE } from "./wallet";
+import { connectInjected, reconnectSilently } from "./wallet";
 
 /** Connect the real browser wallet. Sets the address on success. */
 export async function connectWallet(): Promise<string> {
@@ -451,7 +451,6 @@ export function sacrificeLevel(levels: number) {
 
 export function claimPool() {
   const { estimate, eligible } = poolStats();
-  if (!GATE_LIVE) return toast("Pool goes live once $PONSFARM is deployed", "warn");
   if (!eligible) return toast(`Reach level ${MIN_POOL_LEVEL} first`, "warn");
   if (state.poolPower <= 0) return toast("Add Pool Power first", "warn");
   const amt = Math.floor(estimate * 100) / 100;

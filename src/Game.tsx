@@ -10,7 +10,7 @@ import {
 } from "./harvest";
 import FarmCanvas from "./FarmCanvas";
 import { UI, ToolIcon, CoinGold, TokenLeaf } from "./UiIcon";
-import { roundInfo, fmtCountdown, GATE_LIVE } from "./wallet";
+import { roundInfo, fmtCountdown } from "./wallet";
 import { startAmbience, stopAmbience, toggleMute, isMuted } from "./audio";
 import CropIcon from "./CropIcon";
 import CopyCA from "./CopyCA";
@@ -277,25 +277,11 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   No inflation, no printing.
                 </p>
 
-                {/* round timer — paused until the token is deployed */}
-                {GATE_LIVE ? (
-                  <div className="round-banner sm">
-                    <span className="rb-k">ROUND {round.index} ENDS IN</span>
-                    <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
-                  </div>
-                ) : (
-                  <div className="round-banner sm paused">
-                    <span className="rb-k">POOL NOT LIVE YET</span>
-                    <span className="rb-c">— : — : —</span>
-                  </div>
-                )}
-
-                {!GATE_LIVE && (
-                  <div className="warnbox soft">
-                    The reward pool activates once <b>$PONSFARM</b> is deployed. You can still farm and stack
-                    Pool Power now — the leaderboard preview below shows what your share <i>would</i> pay.
-                  </div>
-                )}
+                {/* round timer — anchored to 08:00 WIB boundaries */}
+                <div className="round-banner sm">
+                  <span className="rb-k">ROUND {round.index} ENDS IN</span>
+                  <span className="rb-c">{fmtCountdown(round.remainingMs)}</span>
+                </div>
 
                 {/* basis-rate estimate against the whole leaderboard */}
                 <div className="poolgrid">
@@ -304,7 +290,7 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   <div><span>Your share</span><b className="grn">{pool.pct.toFixed(2)}%</b></div>
                   <div><span>Basis rate</span><b>{pool.ratePerPower.toFixed(4)}<i> PONS/pwr</i></b></div>
                   <div className="span2">
-                    <span>Est. payout this round {GATE_LIVE ? "" : "(preview)"}</span>
+                    <span>Est. payout this round</span>
                     <b className="grn big">{pool.estimate.toFixed(2)} PONS</b>
                   </div>
                 </div>
@@ -330,8 +316,8 @@ export default function Game({ onLogout }: { onLogout: () => void }) {
                   <button className="mini" disabled={!pool.eligible || g.gold < 500} onClick={() => sacrificeGold(500)}>Burn 500G → +50</button>
                   <button className="mini warn" disabled={g.level - 1 < MIN_POOL_LEVEL} onClick={() => sacrificeLevel(1)}>Burn 1 LV → +120</button>
                 </div>
-                <button className="wide" disabled={!GATE_LIVE || !pool.eligible || g.poolPower <= 0} onClick={claimPool}>
-                  {GATE_LIVE ? `Claim ${pool.estimate.toFixed(1)} PONS` : "Claim opens when $PONSFARM is live"}
+                <button className="wide" disabled={!pool.eligible || g.poolPower <= 0} onClick={claimPool}>
+                  Claim {pool.estimate.toFixed(1)} PONS
                 </button>
                 <CopyCA label="PONS" />
               </>

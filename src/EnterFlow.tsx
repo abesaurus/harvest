@@ -3,7 +3,7 @@ import { useGame, setNickname } from "./store";
 import { Logo } from "./Landing";
 import { UI, CoinGold, TokenLeaf } from "./UiIcon";
 import { MAX_LEVEL } from "./harvest";
-import { roundInfo, fmtCountdown, GATE_LIVE } from "./wallet";
+import { roundInfo, fmtCountdown } from "./wallet";
 import { startAmbience } from "./audio";
 
 /* ═══════════════════════════════════════════════════════════
@@ -167,18 +167,9 @@ export default function EnterFlow({ onDone, onCancel }: { onDone: () => void; on
             </div>
           </div>
 
-          <div className={`ef-round ${GATE_LIVE ? "" : "paused"}`}>
-            {GATE_LIVE ? (
-              <>
-                <span className="efr-k">ROUND {round.index} · pool ends in</span>
-                <span className="efr-c">{fmtCountdown(round.remainingMs)}</span>
-              </>
-            ) : (
-              <>
-                <span className="efr-k">POOL PRE-LAUNCH</span>
-                <span className="efr-c">starts when $PONSFARM deploys</span>
-              </>
-            )}
+          <div className="ef-round">
+            <span className="efr-k">ROUND {round.index} · pool ends in</span>
+            <span className="efr-c">{fmtCountdown(round.remainingMs)}</span>
           </div>
 
           <button className="ef-btn go big" onClick={() => { startAmbience(); setPhase("warping"); }}>
